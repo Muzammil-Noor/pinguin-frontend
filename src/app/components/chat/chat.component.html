@@ -9,36 +9,86 @@
             <p class="text-gray-500 text-xs mt-1 font-medium select-none">Global Chatroom</p>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            <h3
-                class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-4 px-2 select-none flex items-center justify-between">
+        <!-- Tabs -->
+        <div class="flex border-b border-gray-800 bg-gray-900/80">
+            <button (click)="setTab('users')"
+                class="flex-1 py-3 text-sm font-bold border-b-2 transition-colors duration-200"
+                [ngClass]="activeTab === 'users' ? 'text-white border-[#c51ce9]' : 'text-gray-500 border-transparent hover:text-gray-300'">
                 Online Users
-                <span class="bg-gray-800 text-gray-300 py-0.5 px-2 rounded-full">{{ onlineUsers.length }}</span>
-            </h3>
-            <ul class="space-y-1">
-                <li *ngFor="let user of onlineUsers" class="group">
-                    <div
-                        class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-800/50 transition-colors duration-200 cursor-default">
-                        <div class="relative">
-                            <div
-                                class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center border border-gray-600 shadow-sm">
-                                <span class="text-gray-300 font-bold text-sm">{{ user.charAt(0).toUpperCase() }}</span>
+            </button>
+            <button (click)="setTab('rooms')"
+                class="flex-1 py-3 text-sm font-bold border-b-2 transition-colors duration-200"
+                [ngClass]="activeTab === 'rooms' ? 'text-white border-[#c51ce9]' : 'text-gray-500 border-transparent hover:text-gray-300'">
+                Rooms
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <!-- Users Tab -->
+            <div *ngIf="activeTab === 'users'">
+                <h3
+                    class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-4 px-2 select-none flex items-center justify-between">
+                    Users Online
+                    <span class="bg-gray-800 text-gray-300 py-0.5 px-2 rounded-full">{{ onlineUsers.length }}</span>
+                </h3>
+                <ul class="space-y-1">
+                    <li *ngFor="let user of onlineUsers" class="group">
+                        <div
+                            class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-800/50 transition-colors duration-200 cursor-default">
+                            <div class="relative">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center border border-gray-600 shadow-sm">
+                                    <span class="text-gray-300 font-bold text-sm">{{ user.charAt(0).toUpperCase()
+                                        }}</span>
+                                </div>
+                                <div
+                                    class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900">
+                                </div>
                             </div>
+                            <span
+                                class="text-gray-300 text-sm font-medium truncate group-hover:text-white transition-colors"
+                                [class.text-transparent]="user === currentUser"
+                                [class.bg-clip-text]="user === currentUser"
+                                [class.bg-gradient-to-r]="user === currentUser"
+                                [class.from-[#c51ce9]]="user === currentUser"
+                                [class.to-[#4075f9]]="user === currentUser">
+                                {{ user }} <span *ngIf="user === currentUser"
+                                    class="text-xs text-gray-500 ml-1">(You)</span>
+                            </span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Rooms Tab -->
+            <div *ngIf="activeTab === 'rooms'">
+                <div class="mb-4">
+                    <button
+                        class="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg border border-gray-700 transition-colors flex items-center justify-center space-x-2">
+                        <svg class="h-4 w-4 text-[#c51ce9]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                            </path>
+                        </svg>
+                        <span>Create Room</span>
+                    </button>
+                </div>
+                <h3 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 px-2 select-none">Active Rooms
+                </h3>
+                <ul class="space-y-1">
+                    <li>
+                        <div
+                            class="flex items-center space-x-3 p-2 rounded-lg bg-gray-800/80 border border-gray-700 cursor-pointer">
                             <div
-                                class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900">
+                                class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#c51ce9] to-[#8a33ed] flex items-center justify-center shadow-inner">
+                                <span class="text-white font-bold text-sm">#</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <span class="text-white text-sm font-bold truncate block">Global Chatroom</span>
                             </div>
                         </div>
-                        <span
-                            class="text-gray-300 text-sm font-medium truncate group-hover:text-white transition-colors"
-                            [class.text-transparent]="user === currentUser" [class.bg-clip-text]="user === currentUser"
-                            [class.bg-gradient-to-r]="user === currentUser"
-                            [class.from-[#c51ce9]]="user === currentUser" [class.to-[#4075f9]]="user === currentUser">
-                            {{ user }} <span *ngIf="user === currentUser"
-                                class="text-xs text-gray-500 ml-1">(You)</span>
-                        </span>
-                    </div>
-                </li>
-            </ul>
+                    </li>
+                </ul>
+            </div>
         </div>
 
         <!-- User Profile Area -->
@@ -89,14 +139,14 @@
         </header>
 
         <!-- Messages -->
-        <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth" #scrollMe
+        <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar scroll-smooth" #scrollMe
             [scrollTop]="scrollMe.scrollHeight">
 
             <!-- Welcome Message -->
             <div class="flex justify-center mb-8">
                 <div
                     class="bg-gray-900/60 border border-gray-800 text-gray-400 px-6 py-3 rounded-2xl text-sm shadow-inner max-w-lg text-center backdrop-blur-sm">
-                    Welcome to the beginning of the <span
+                    Welcome to the <span
                         class="text-transparent bg-clip-text bg-gradient-to-r from-[#c51ce9] to-[#4075f9] font-bold">Pinguin</span>
                     global chat.
                     <br> Messages are ephemeral. Be nice.
@@ -104,9 +154,19 @@
             </div>
 
             <div *ngFor="let msg of messages; let i = index" class="group flex flex-col"
-                [class.items-end]="msg.user === currentUser" [class.items-start]="msg.user !== currentUser">
+                [class.items-end]="msg.user === currentUser && !msg.isSystem"
+                [class.items-start]="msg.user !== currentUser && !msg.isSystem" [class.items-center]="msg.isSystem"
+                [class.my-1]="msg.isSystem">
 
-                <div class="flex items-end space-x-2 max-w-[85%] sm:max-w-[75%]"
+                <!-- System Message -->
+                <div *ngIf="msg.isSystem"
+                    class="text-center font-bold px-4 py-1.5 rounded-full bg-gray-900/50 border border-gray-800 backdrop-blur-sm text-xs shadow-sm shadow-black/50"
+                    [ngClass]="{'text-[#c51ce9]': msg.eventType === 'join', 'text-[#dd3064]': msg.eventType === 'leave'}">
+                    {{ msg.message }}
+                </div>
+
+                <!-- Regular Message -->
+                <div *ngIf="!msg.isSystem" class="flex items-end max-w-[85%] sm:max-w-[75%]"
                     [class.flex-row-reverse]="msg.user === currentUser"
                     [class.space-x-reverse]="msg.user === currentUser">
 
@@ -122,9 +182,11 @@
                     <!-- Message Bubble -->
                     <div class="flex flex-col relative" [class.items-end]="msg.user === currentUser"
                         [class.items-start]="msg.user !== currentUser">
-                        <span *ngIf="msg.user !== currentUser && (i === 0 || messages[i-1].user !== msg.user)"
+                        <span
+                            *ngIf="msg.user !== currentUser && (i === 0 || messages[i-1].user !== msg.user || messages[i-1].isSystem)"
                             class="text-gray-400 text-xs mb-1 ml-1 font-medium">{{ msg.user }}</span>
-                        <span *ngIf="msg.user === currentUser && (i === 0 || messages[i-1].user !== msg.user)"
+                        <span
+                            *ngIf="msg.user === currentUser && (i === 0 || messages[i-1].user !== msg.user || messages[i-1].isSystem)"
                             class="text-gray-500 text-xs mb-1 mr-1 font-medium">You</span>
 
                         <div class="px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-md transition-all hover:shadow-lg"
@@ -132,7 +194,7 @@
                   'bg-gradient-to-br from-[#c51ce9] to-[#8a33ed] text-white rounded-br-sm': msg.user === currentUser,
                   'bg-gray-800 border border-gray-700 text-gray-100 rounded-bl-sm': msg.user !== currentUser
                 }">
-                            {{ msg.message }}
+                            <p [innerHTML]="msg.message"></p>
                         </div>
                     </div>
                 </div>
@@ -168,6 +230,25 @@
             </div>
         </div>
     </main>
+
+    <!-- Right Sidebar -->
+    <aside class="w-64 bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl z-10 hidden lg:flex">
+        <div class="p-6 border-b border-gray-800 bg-gradient-to-l from-gray-900 to-gray-900/50">
+            <h2 class="text-lg font-bold text-gray-200">Room Details</h2>
+            <p class="text-gray-500 text-xs mt-1 font-medium">Global Chatroom</p>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center text-gray-500 space-y-4">
+            <div
+                class="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#c51ce9]/20 to-[#4075f9]/20 flex items-center justify-center border border-gray-700/50">
+                <span
+                    class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-[#c51ce9] to-[#4075f9]">#</span>
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-semibold text-gray-300">Public Channel</p>
+                <p class="text-xs text-gray-500 mt-2">Ephemeral messaging.<br>No logs, no persistence.</p>
+            </div>
+        </div>
+    </aside>
 </div>
 
 <!-- Add some custom CSS just for the scrollbar to keep it sleek -->

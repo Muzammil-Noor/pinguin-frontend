@@ -3,6 +3,13 @@ import * as signalR from '@microsoft/signalr';
 import { BehaviorSubject } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
+export interface ChatMessage {
+  user: string;
+  message: string;
+  isSystem?: boolean;
+  eventType?: 'join' | 'leave';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -10,7 +17,7 @@ export class ChatService {
   private hubConnection: signalR.HubConnection;
   private backendUrl = 'http://localhost:5000'; // ASP.NET Core default HTTP port
 
-  public messages$ = new BehaviorSubject<{ user: string, message: string }[]>([]);
+  public messages$ = new BehaviorSubject<ChatMessage[]>([]);
   public onlineUsers$ = new BehaviorSubject<string[]>([]);
   public currentUser: string = '';
 
@@ -26,44 +33,41 @@ export class ChatService {
   private setupListeners() {
     this.hubConnection.on('MessageReceived', (user: string, message: string) => {
       const currentMessages = this.messages$.value;
-      this.messages$.next([...currentMessages, { user, message }]);
+      const cleaned = message.replace(/\n/g, '<br>');
+      this.messages$.next([...currentMessages, { user, message: cleaned }]);
     });
 
     this.hubConnection.on('UserJoined', (user: string) => {
-      // In a real app we'd fetch the list, but for MVP we might just append if we don't have the full list
-      // Or better, let the server send the full list occasionally. 
-      // For now, let's just keep track simply.
-      console.log(`${user} joined`);
+      if (user !== this.currentUser && !this.onlineUsers$.value.includes(user)) {
+        this.onlineUsers$.next([...this.onlineUsers$.value, user]);
+      }
+      const currentMessages = this.messages$.value;
+      this.messages$.next([...currentMessages, { user, message: `+ ${user} joined.`, isSystem: true, eventType: 'join' }]);
     });
 
     this.hubConnection.on('UserLeft', (user: string) => {
       const currentUsers = this.onlineUsers$.value.filter(u => u !== user);
       this.onlineUsers$.next(currentUsers);
-      console.log(`${user} left`);
+      const currentMessages = this.messages$.value;
+      this.messages$.next([...currentMessages, { user, message: `- ${user} left.`, isSystem: true, eventType: 'leave' }]);
     });
   }
 
   public async startConnection(username: string): Promise<boolean> {
     try {
-      // 1. Validate username
-      const validateRes = await this.http.post<{ available: boolean }>(`${this.backendUrl}/username/validate`, { username }).toPromise();
-      if (!validateRes?.available) {
-        return false;
+      if (this.hubConnection.state !== signalR.HubConnectionState.Connected) {
+        await this.hubConnection.start();
       }
 
-      // 2. Start SignalR connection
-      await this.hubConnection.start();
+      const success = await this.hubConnection.invoke<boolean>('JoinChat', username);
 
-      // 3. Set username internally on backend
-      const setRes = await this.http.post<{ success: boolean }>(`${this.backendUrl}/username/set`, {
-        connectionId: this.hubConnection.connectionId,
-        username
-      }).toPromise();
-
-      if (setRes?.success) {
+      if (success) {
         this.currentUser = username;
-        // Add self to online users for display purposes
-        this.onlineUsers$.next([...this.onlineUsers$.value, username]);
+
+        // Fetch current online users
+        const users = await this.hubConnection.invoke<string[]>('GetOnlineUsers');
+        this.onlineUsers$.next(users);
+
         return true;
       } else {
         await this.hubConnection.stop();

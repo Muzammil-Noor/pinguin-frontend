@@ -1,0 +1,52 @@
+@property --angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
+.container {
+    position: relative;
+    transition: 0.1s ease-in-out;
+    border-radius: 10px;
+    z-index: 1;
+}
+
+.container::after {
+    content: "";
+    background-image: conic-gradient(from var(--angle) at 50% 50%, #4075f9, #c51ce9, #a21ce8, #c51ce9, #4075f9);
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    z-index: -1;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    border-radius: 10px;
+    padding: 5px;
+    animation: 3s spin linear infinite;
+}
+
+.container::before {
+    content: "";
+    background-image: conic-gradient(from var(--angle) at 50% 50%, #4075f9, #c51ce9, #a21ce8, #c51ce9, #4075f9);
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    z-index: -1;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    padding: 5px;
+    filter: blur(1.5rem);
+    animation: 3s spin linear infinite;
+}
+
+@keyframes spin {
+    from {
+        --angle: 0deg;
+    }
+
+    to {
+        --angle: 360deg;
+    }
+}

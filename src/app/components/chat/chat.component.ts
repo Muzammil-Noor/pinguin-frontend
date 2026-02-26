@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ChatService } from '../../services/chat.service';
+import { ChatService, ChatMessage } from '../../services/chat.service';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -13,8 +13,9 @@ import { Subscription } from 'rxjs';
   styleUrl: './chat.component.css'
 })
 export class ChatComponent implements OnInit, OnDestroy {
-  messages: { user: string, message: string }[] = [];
+  messages: ChatMessage[] = [];
   onlineUsers: string[] = [];
+  activeTab: 'users' | 'rooms' = 'users';
   currentUser: string = '';
   newMessage: string = '';
 
@@ -22,6 +23,10 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   constructor(private chatService: ChatService, private router: Router) {
     this.currentUser = this.chatService.currentUser;
+  }
+
+  setTab(tab: 'users' | 'rooms') {
+    this.activeTab = tab;
   }
 
   ngOnInit() {
