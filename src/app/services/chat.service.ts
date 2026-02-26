@@ -26,6 +26,10 @@ export class ChatService {
   public onlineUsers$ = new BehaviorSubject<string[]>([]);
   public currentUser: string = '';
 
+  // RSA key handling
+  private privateKey: CryptoKey | null = null;
+  private publicKeys = new Map<string, CryptoKey>();
+
   constructor(private http: HttpClient) {
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`${this.backendUrl}/chathub`)
@@ -57,19 +61,36 @@ export class ChatService {
       this.messages$.next([...currentMessages, { user, message: `- ${user} left.`, isSystem: true, eventType: 'leave', toUser: 'global' }]);
     });
 
-    this.hubConnection.on('PrivateMessageReceived', (fromUser: string, message: string, isEcho: boolean) => {
+    this.hubConnection.on('PrivateMessageReceived', async (fromUser: string, encryptedB64: string, isEcho: boolean) => {
       const currentMessages = this.messages$.value;
-      const cleaned = message.replace(/\n/g, '<br>');
-      // If echo, isPrivate true but fromUser technically is the target in the echo response
-      const targetChat = isEcho ? fromUser : fromUser;
-      const actualSender = isEcho ? this.currentUser : fromUser;
 
-      this.messages$.next([...currentMessages, {
-        user: actualSender,
-        message: cleaned,
-        isPrivate: true,
-        toUser: targetChat
-      }]);
+      let decryptedText = encryptedB64;
+
+      // Only decrypt if this is NOT echo (echo is already encrypted with recipient's key)
+      if (!isEcho && this.privateKey) {
+        try {
+          const encryptedBytes = Uint8Array.from(atob(encryptedB64), c => c.charCodeAt(0));
+          const decryptedBuffer = await window.crypto.subtle.decrypt(
+            { name: 'RSA-OAEP' },
+            this.privateKey,
+            encryptedBytes
+          );
+
+          decryptedText = new TextDecoder().decode(decryptedBuffer);
+        } catch (err) {
+          console.error("Decryption failed:", err);
+          decryptedText = "[Decryption failed]";
+        }
+        const cleaned = decryptedText.replace(/\n/g, '<br>');
+        const actualSender = isEcho ? this.currentUser : fromUser;
+
+        this.messages$.next([...currentMessages, {
+          user: actualSender,
+          message: cleaned,
+          isPrivate: true,
+          toUser: isEcho ? fromUser : fromUser
+        }]);
+      }
     });
 
     this.hubConnection.on('FileReceived', (fromUser: string, fileName: string, fileData: string, privateTargetContext: string | null) => {
@@ -86,6 +107,61 @@ export class ChatService {
         toUser: targetChat
       }]);
     });
+    // Receive private key
+    this.hubConnection.on('ReceivePrivateKey', async (privateKeyPem: string) => {
+      this.privateKey = await this.importPrivateKey(privateKeyPem);
+    });
+
+    // Receive public key for a user
+    this.hubConnection.on('UserPublicKey', async (username: string, publicKeyPem: string) => {
+      const key = await this.importPublicKey(publicKeyPem);
+      this.publicKeys.set(username, key);
+      console.log("key recieved")
+    });
+  }
+
+  private async importPublicKey(pem: string): Promise<CryptoKey> {
+    const binaryDer = this.pemToArrayBuffer(pem);
+    return await window.crypto.subtle.importKey(
+      'spki',
+      binaryDer,
+      {
+        name: 'RSA-OAEP',
+        hash: 'SHA-256'
+      },
+      true,
+      ['encrypt']
+    );
+  }
+
+  private async importPrivateKey(pem: string): Promise<CryptoKey> {
+    const binaryDer = this.pemToArrayBuffer(pem);
+    return await window.crypto.subtle.importKey(
+      'pkcs8',
+      binaryDer,
+      {
+        name: 'RSA-OAEP',
+        hash: 'SHA-256'
+      },
+      true,
+      ['decrypt']
+    );
+  }
+
+  private pemToArrayBuffer(pem: string): ArrayBuffer {
+    const b64 = pem
+      .replace(/-----BEGIN [^-]+-----/, '')
+      .replace(/-----END [^-]+-----/, '')
+      .replace(/\s/g, '');
+
+    const binary = window.atob(b64);
+    const buffer = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i++) {
+      buffer[i] = binary.charCodeAt(i);
+    }
+
+    return buffer.buffer;
   }
 
   public async startConnection(username: string): Promise<boolean> {
@@ -122,7 +198,25 @@ export class ChatService {
 
   public async sendPrivateMessage(toUser: string, message: string) {
     if (this.hubConnection.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('SendPrivateMessage', toUser, message);
+      // Encrypt message with recipient's public key
+      const pubKey = this.publicKeys.get(toUser);
+      if (!pubKey) {
+        console.error('Public key for recipient not found');
+        return;
+      }
+      const encoder = new TextEncoder();
+      const data = encoder.encode(message);
+      const encrypted = await window.crypto.subtle.encrypt({ name: 'RSA-OAEP' }, pubKey, data);
+      const encryptedB64 = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+      await this.hubConnection.invoke('SendPrivateMessage', toUser, encryptedB64);
+      const cleaned = message.replace(/\n/g, '<br>');
+      const currentMessages = this.messages$.value;
+      this.messages$.next([...currentMessages, {
+        user: this.currentUser,
+        message: cleaned,
+        isPrivate: true,
+        toUser
+      }]);
     }
   }
 
