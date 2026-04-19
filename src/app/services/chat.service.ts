@@ -139,6 +139,27 @@ export class ChatService {
           console.error("Decryption failed", err);
         }
       });
+
+    this.hubConnection.on('FileReceived', (user: string, fileName: string, fileData: string, isPrivate: boolean, originalToUser: string | null) => {
+      const current = this.messages$.value;
+      
+      let toUser = undefined;
+      if (isPrivate) {
+        // If I sent it, the chat room is originalToUser
+        // If I received it, the chat room is the sender (user)
+        toUser = (user === this.currentUser && originalToUser) ? originalToUser : user;
+      }
+      
+      this.messages$.next([...current, {
+        user,
+        message: '',
+        isFile: true,
+        fileName,
+        fileData,
+        isPrivate: isPrivate,
+        toUser: toUser
+      }]);
+    });
   }
 
   // =========================

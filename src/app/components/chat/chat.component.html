@@ -1,385 +1,298 @@
-<div class="flex h-screen bg-black text-gray-100 font-sans overflow-hidden">
+<div class="min-h-screen bg-black flex justify-center items-center p-2 sm:p-4 overflow-hidden text-gray-100 font-sans">
 
-    <!-- Sidebar -->
-    <aside class="w-72 bg-gray-900 border-r border-gray-800 flex flex-col shadow-2xl z-10 hidden md:flex">
-        <div class="p-6 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-gray-900/50">
-            <h2
-                class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#c51ce9] to-[#4075f9] tracking-tight">
-                Pinguin</h2>
-            <p class="text-gray-500 text-xs mt-1 font-medium select-none">Global Chatroom</p>
-        </div>
+    <div class="w-full bg-red h-[95vh] sm:h-[90vh] rounded-xl flex p-2">
 
-        <!-- Tabs -->
-        <div class="flex border-b border-gray-800 bg-gray-900/80">
-            <button (click)="setTab('users')"
-                class="flex-1 py-3 text-sm font-bold border-b-2 transition-colors duration-200"
-                [ngClass]="activeTab === 'users' ? 'text-white border-[#c51ce9]' : 'text-gray-500 border-transparent hover:text-gray-300'">
-                Online Users
-            </button>
-            <button (click)="setTab('rooms')"
-                class="flex-1 py-3 text-sm font-bold border-b-2 transition-colors duration-200"
-                [ngClass]="activeTab === 'rooms' ? 'text-white border-[#c51ce9]' : 'text-gray-500 border-transparent hover:text-gray-300'">
-                Rooms
-            </button>
-        </div>
+        <div class="bg-transparent w-full h-full flex overflow-hidden shadow-2xl relative flex gap-2">
 
-        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            <!-- Users Tab -->
-            <div *ngIf="activeTab === 'users'">
-                <h3
-                    class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-4 px-2 select-none flex items-center justify-between">
-                    Users Online
-                    <span class="bg-gray-800 text-gray-300 py-0.5 px-2 rounded-full">{{ onlineUsers.length }}</span>
-                </h3>
-                <ul class="space-y-1">
-                    <li *ngFor="let user of onlineUsers" class="group">
-                        <div class="flex items-center space-x-3 p-2 rounded-lg transition-colors duration-200 cursor-pointer"
-                            [ngClass]="activeChat === user ? 'bg-gray-800/80 border border-gray-600' : 'hover:bg-gray-800/50 border border-transparent'"
-                            (click)="openDM(user)">
-                            <div class="relative">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center border shadow-sm transition-all"
-                                    [ngClass]="hasUnread(user) ? 'bg-[#bb2c45]/20 border-[#bb2c45]' : 'bg-gradient-to-br from-gray-700 to-gray-800 border-gray-600'">
-                                    <span class="font-bold text-sm"
-                                        [ngClass]="hasUnread(user) ? 'text-[#bb2c45]' : 'text-gray-300'">{{
-                                        user.charAt(0).toUpperCase() }}</span>
-                                </div>
-                                <div
-                                    class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900">
-                                </div>
-                            </div>
-                            <span class="text-sm font-medium truncate transition-all flex items-center" [ngClass]="{
-                                        'text-transparent bg-clip-text bg-gradient-to-r from-[#c51ce9] to-[#4075f9]': user === currentUser,
-                                        'text-[#bb2c45] font-bold drop-shadow-[0_0_8px_rgba(187,44,69,0.5)]': hasUnread(user),
-                                        'text-white font-bold': activeChat === user && !hasUnread(user) && user !== currentUser,
-                                        'text-gray-300 group-hover:text-white': activeChat !== user && !hasUnread(user) && user !== currentUser
-                                    }">
-                                {{ user }}
-                                <span *ngIf="user === currentUser" class="text-xs text-gray-500 ml-1">(You)</span>
-                                <span *ngIf="hasUnread(user)"
-                                    class="ml-2 w-2 h-2 rounded-full bg-[#bb2c45] animate-pulse"></span>
-                            </span>
-                        </div>
-                    </li>
-                </ul>
-            </div>
+            <aside
+                class="w-20 md:w-72 border-[4px] border-purple-900 rounded-lg flex flex-col z-10 transition-all duration-300 backdrop-blur-md">
+                <div class="p-4 md:p-6 border-b border-purple-900 flex items-center justify-center md:justify-start">
+                    <img src="assets/Pinguin.png" alt="pinguin" class="w-8 h-8 md:mr-3 object-contain hidden md:block">
+                    <h2
+                        class="hidden md:block text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#c51ce9] to-[#4075f9] tracking-tight">
+                        Pinguin
+                    </h2>
+                    <div
+                        class="md:hidden w-10 h-10 rounded-full bg-gradient-to-br from-[#c51ce9] to-[#4075f9] flex items-center justify-center font-bold text-white shadow-lg">
+                        P
+                    </div>
+                </div>
 
-            <!-- Rooms Tab -->
-            <div *ngIf="activeTab === 'rooms'">
-                <div class="mb-4">
-                    <button
-                        class="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg border border-gray-700 transition-colors flex items-center justify-center space-x-2">
-                        <svg class="h-4 w-4 text-[#c51ce9]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                <div class="flex border-b border-gray-800/60 bg-gray-900/40">
+                    <button (click)="setTab('users')"
+                        class="flex-1 py-3 flex justify-center items-center text-sm font-bold border-b-2 transition-colors duration-200"
+                        [ngClass]="activeTab === 'users' ? 'text-white border-[#c51ce9]' : 'text-gray-500 border-transparent hover:text-gray-300'">
+                        <span class="hidden md:block">Users</span>
+                        <svg class="w-5 h-5 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
                             </path>
                         </svg>
-                        <span>Create Room</span>
+                    </button>
+                    <button (click)="setTab('rooms')"
+                        class="flex-1 py-3 flex justify-center items-center text-sm font-bold border-b-2 transition-colors duration-200"
+                        [ngClass]="activeTab === 'rooms' ? 'text-white border-[#c51ce9]' : 'text-gray-500 border-transparent hover:text-gray-300'">
+                        <span class="hidden md:block">Rooms</span>
+                        <svg class="w-5 h-5 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z">
+                            </path>
+                        </svg>
                     </button>
                 </div>
-                <h3 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 px-2 select-none">Channels</h3>
-                <ul class="space-y-1 mb-4">
-                    <li>
-                        <div (click)="setActiveChat('global')"
-                            class="flex items-center space-x-3 p-2 rounded-lg cursor-pointer transition-colors"
-                            [ngClass]="activeChat === 'global' ? 'bg-gray-800/80 border border-gray-600' : 'hover:bg-gray-800/50 border border-transparent'">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shadow-inner"
-                                [ngClass]="activeChat === 'global' ? 'bg-gradient-to-br from-[#c51ce9] to-[#8a33ed]' : 'bg-gray-800'">
-                                <span class="font-bold text-sm"
-                                    [ngClass]="activeChat === 'global' ? 'text-white' : 'text-gray-400'">#</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <span class="text-sm font-bold truncate block"
-                                    [ngClass]="activeChat === 'global' ? 'text-white' : 'text-gray-300'">Global
-                                    Chatroom</span>
-                            </div>
-                        </div>
-                    </li>
-                </ul>
 
-                <h3 *ngIf="openDMs.length > 0"
-                    class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 px-2 select-none mt-4">Direct
-                    Messages</h3>
-                <ul class="space-y-1">
-                    <li *ngFor="let dm of openDMs">
-                        <div (click)="setActiveChat(dm)"
-                            class="flex items-center space-x-3 p-2 rounded-lg cursor-pointer transition-colors"
-                            [ngClass]="activeChat === dm ? 'bg-gray-800/80 border border-gray-600' : 'hover:bg-gray-800/50 border border-transparent'">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center border border-gray-600 shadow-sm"
-                                [ngClass]="activeChat === dm ? 'bg-gradient-to-br from-[#c51ce9] to-[#4075f9]' : 'bg-gray-800'">
-                                <span class="font-bold text-sm"
-                                    [ngClass]="activeChat === dm ? 'text-white' : 'text-gray-400'">{{
-                                    dm.charAt(0).toUpperCase() }}</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <span class="text-sm font-bold truncate block"
-                                    [ngClass]="activeChat === dm ? 'text-white' : 'text-gray-300'">{{ dm }}</span>
-                            </div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- User Profile Area -->
-        <div class="p-4 border-t border-gray-800 bg-gray-950/50">
-            <div class="flex items-center space-x-3 p-2 rounded-lg bg-gray-900 border border-gray-800 shadow-inner">
-                <div
-                    class="w-10 h-10 rounded-full bg-gradient-to-br from-[#c51ce9] to-[#4075f9] flex items-center justify-center shadow-lg">
-                    <span class="text-white font-bold">{{ currentUser ? currentUser.charAt(0).toUpperCase() : ''
-                        }}</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-white truncate">{{ currentUser }}</p>
-                    <p class="text-xs text-green-400 truncate">Connected</p>
-                </div>
-            </div>
-        </div>
-    </aside>
-
-    <!-- Main Chat Area -->
-    <main class="flex-1 flex flex-col relative bg-[#0a0a0a]">
-
-        <!-- Header -->
-        <header
-            class="h-16 border-b border-gray-800 flex items-center px-6 justify-between bg-gray-900/80 backdrop-blur-md z-10 shadow-sm">
-            <div class="flex items-center">
-                <!-- Mobile menu button (hidden on desktop) -->
-                <button class="md:hidden mr-4 text-gray-400 hover:text-white transition-colors">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-                <div>
-                    <h1 class="text-lg font-bold text-gray-100 flex items-center">
-                        <span class="text-gray-400 mr-2">#</span> global
-                    </h1>
-                </div>
-            </div>
-            <div class="flex items-center space-x-4">
-                <div class="hidden sm:block">
-                    <span class="relative flex h-3 w-3">
-                        <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                    </span>
-                </div>
-            </div>
-        </header>
-
-        <!-- Messages -->
-        <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar scroll-smooth" #scrollMe
-            [scrollTop]="scrollMe.scrollHeight">
-
-            <div class="flex flex-col mb-8 mt-4 text-center">
-                <div class="w-20 h-20 rounded-2xl mx-auto flex items-center justify-center shadow-lg border border-gray-700/50 bg-gradient-to-br"
-                    [ngClass]="activeChat === 'global' ? 'from-[#c51ce9]/20 to-[#4075f9]/20' : 'from-gray-800 to-gray-900 rounded-full'">
-                    <span *ngIf="activeChat === 'global'"
-                        class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-[#c51ce9] to-[#4075f9]">#</span>
-                    <span *ngIf="activeChat !== 'global'"
-                        class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-300 to-white">{{
-                        activeChat.charAt(0).toUpperCase() }}</span>
-                </div>
-                <h1 class="text-2xl font-bold mt-4 text-white">
-                    {{ activeChat === 'global' ? 'Welcome to #global!' : 'Direct message with ' + activeChat }}
-                </h1>
-                <p class="text-gray-500 text-sm mt-2">
-                    {{ activeChat === 'global' ? 'This is the start of the public channel.' : 'This is the beginning of
-                    your private history with ' + activeChat + '.' }}
-                </p>
-                <div class="h-px bg-gray-800 w-full max-w-lg mx-auto mt-6"></div>
-            </div>
-
-            <div *ngFor="let msg of filteredMessages; let i = index" class="group flex flex-col"
-                [class.items-end]="msg.user === currentUser && !msg.isSystem"
-                [class.items-start]="msg.user !== currentUser && !msg.isSystem" [class.items-center]="msg.isSystem"
-                [class.my-1]="msg.isSystem">
-
-                <!-- System Message -->
-                <div *ngIf="msg.isSystem"
-                    class="text-center font-bold px-4 py-1.5 rounded-full bg-gray-900/50 border border-gray-800 backdrop-blur-sm text-xs shadow-sm shadow-black/50"
-                    [ngClass]="{'text-[#c51ce9]': msg.eventType === 'join', 'text-[#dd3064]': msg.eventType === 'leave'}">
-                    {{ msg.message }}
-                </div>
-
-                <!-- Regular Message -->
-                <div *ngIf="!msg.isSystem" class="flex items-end max-w-[85%] sm:max-w-[75%]"
-                    [class.flex-row-reverse]="msg.user === currentUser"
-                    [class.space-x-reverse]="msg.user === currentUser">
-
-                    <!-- Avatar (only for others) -->
-                    <div *ngIf="msg.user !== currentUser"
-                        class="flex-shrink-0 mb-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                        <div
-                            class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
-                            <span class="text-gray-400 text-xs font-bold">{{ msg.user.charAt(0).toUpperCase() }}</span>
-                        </div>
+                <div class="flex-1 overflow-y-auto p-2 md:p-4 custom-scrollbar">
+                    <!-- Users Tab -->
+                    <div *ngIf="activeTab === 'users'">
+                        <h3
+                            class="hidden md:flex text-gray-400 text-xs font-bold uppercase tracking-wider mb-4 px-2 select-none items-center justify-between">
+                            Online
+                            <span class="bg-gray-800 text-gray-300 py-0.5 px-2 rounded-full">{{ onlineUsers.length
+                                }}</span>
+                        </h3>
+                        <ul class="space-y-1">
+                            <li *ngFor="let user of onlineUsers" class="group">
+                                <div class="flex items-center space-x-0 md:space-x-3 p-2 justify-center md:justify-start rounded-lg transition-all duration-200 cursor-pointer"
+                                    [ngClass]="activeChat === user ? 'bg-gray-800/80 border border-gray-700/50 shadow-inner' : 'hover:bg-gray-800/50 border border-transparent'"
+                                    (click)="openDM(user)">
+                                    <div class="relative">
+                                        <div class="w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center border shadow-sm transition-all"
+                                            [ngClass]="hasUnread(user) ? 'bg-[#bb2c45]/20 border-[#bb2c45]' : 'bg-gradient-to-br from-gray-700 to-gray-800 border-gray-600'">
+                                            <span class="font-bold text-sm"
+                                                [ngClass]="hasUnread(user) ? 'text-[#bb2c45]' : 'text-gray-300'">{{
+                                                user.charAt(0).toUpperCase() }}</span>
+                                        </div>
+                                        <div
+                                            class="absolute bottom-0 right-0 w-3 h-3 md:w-2.5 md:h-2.5 bg-green-500 rounded-full border-2 border-black">
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="hidden md:flex text-sm font-medium truncate transition-all items-center"
+                                        [ngClass]="{
+                                                'text-transparent bg-clip-text bg-gradient-to-r from-[#c51ce9] to-[#4075f9]': user === currentUser,
+                                                'text-[#bb2c45] font-bold drop-shadow-[0_0_8px_rgba(187,44,69,0.5)]': hasUnread(user),
+                                                'text-white font-bold': activeChat === user && !hasUnread(user) && user !== currentUser,
+                                                'text-gray-300 group-hover:text-white': activeChat !== user && !hasUnread(user) && user !== currentUser
+                                            }">
+                                        {{ user }}
+                                        <span *ngIf="user === currentUser"
+                                            class="text-xs text-gray-500 ml-1">(You)</span>
+                                        <span *ngIf="hasUnread(user)"
+                                            class="ml-2 w-2 h-2 rounded-full bg-[#bb2c45] animate-pulse"></span>
+                                    </span>
+                                </div>
+                            </li>
+                        </ul>
                     </div>
 
-                    <!-- Message Bubble -->
-                    <div class="flex flex-col relative" [class.items-end]="msg.user === currentUser"
-                        [class.items-start]="msg.user !== currentUser">
-                        <span
-                            *ngIf="msg.user !== currentUser && (i === 0 || filteredMessages[i-1].user !== msg.user || filteredMessages[i-1].isSystem)"
-                            class="text-gray-400 text-xs mb-1 ml-1 font-medium">{{ msg.user }}</span>
-                        <span
-                            *ngIf="msg.user === currentUser && (i === 0 || filteredMessages[i-1].user !== msg.user || filteredMessages[i-1].isSystem)"
-                            class="text-gray-500 text-xs mb-1 mr-1 font-medium">You</span>
+                    <!-- Rooms Tab -->
+                    <div *ngIf="activeTab === 'rooms'">
+                        <ul class="space-y-1 mb-4 mt-2">
+                            <li>
+                                <div (click)="setActiveChat('global')"
+                                    class="flex items-center space-x-0 md:space-x-3 p-2 justify-center md:justify-start rounded-lg cursor-pointer transition-all"
+                                    [ngClass]="activeChat === 'global' ? 'bg-gray-800/80 border border-gray-700/50 shadow-inner' : 'hover:bg-gray-800/50 border border-transparent'">
+                                    <div class="hidden md:block flex-1 min-w-0">
+                                        <span class="text-sm font-bold truncate block"
+                                            [ngClass]="activeChat === 'global' ? 'text-white' : 'text-gray-300'">Global
+                                            Chat</span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
 
-                        <!-- Standard Text -->
-                        <div *ngIf="!msg.isFile"
-                            class="px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-md transition-all hover:shadow-lg"
-                            [ngClass]="{
-                  'bg-gradient-to-br from-[#c51ce9] to-[#8a33ed] text-white rounded-br-sm': msg.user === currentUser,
-                  'bg-gray-800 border border-gray-700 text-gray-100 rounded-bl-sm': msg.user !== currentUser
-                }">
-                            <p [innerHTML]="msg.message"></p>
+                        <h3 *ngIf="openDMs.length > 0"
+                            class="hidden md:block text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 px-2 select-none mt-4">
+                            Direct
+                            Messages</h3>
+                        <ul class="space-y-1">
+                            <li *ngFor="let dm of openDMs">
+                                <div (click)="setActiveChat(dm)"
+                                    class="flex items-center space-x-0 md:space-x-3 p-2 justify-center md:justify-start rounded-lg cursor-pointer transition-all"
+                                    [ngClass]="activeChat === dm ? 'bg-gray-800/80 border border-gray-700/50 shadow-inner' : 'hover:bg-gray-800/50 border border-transparent'">
+                                    <div class="relative">
+                                        <div class="w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center border border-gray-600 shadow-sm"
+                                            [ngClass]="activeChat === dm ? 'bg-gradient-to-br from-[#c51ce9] to-[#4075f9]' : 'bg-gray-800'">
+                                            <span class="font-bold text-sm"
+                                                [ngClass]="activeChat === dm ? 'text-white' : 'text-gray-400'">{{
+                                                dm.charAt(0).toUpperCase() }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="hidden md:block flex-1 min-w-0">
+                                        <span class="text-sm font-bold truncate block"
+                                            [ngClass]="activeChat === dm ? 'text-white' : 'text-gray-300'">{{ dm
+                                            }}</span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Chat Area -->
+            <main class="flex-1 flex flex-col relative border-[4px] border-purple-900 rounded-lg rounded-lg">
+                <!-- Header -->
+                <header
+                    class="h-14 md:h-16 border-b border-purple-900 flex items-center px-4 md:px-6 justify-between bg-black/40 backdrop-blur-md z-10">
+                    <div class="flex items-center space-x-3">
+                        <div *ngIf="activeChat !== 'global'"
+                            class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800/80 shadow-inner">
+                            <span class="font-bold text-gray-300">{{
+                                activeChat.charAt(0).toUpperCase() }}</span>
+                        </div>
+                        <div>
+                            <h2 class="text-white font-bold text-sm md:text-base">{{ activeChat === 'global' ? 'Global
+                                Chat' : activeChat }}</h2>
+                            <p class="text-xs text-green-400 font-medium opacity-80" *ngIf="activeChat !== 'global'">E2E
+                                Encrypted</p>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Messages -->
+                <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar scroll-smooth" #scrollMe
+                    [scrollTop]="scrollMe.scrollHeight">
+                    <div class="flex flex-col mb-8 mt-4 text-center">
+                        <div *ngIf="activeChat !== 'global'"
+                            class="w-16 h-16 md:w-20 md:h-20 rounded-2xl mx-auto flex items-center justify-center shadow-lg border border-gray-700/50 bg-gradient-to-br"
+                            [ngClass]="activeChat === 'global' ? 'from-[#c51ce9]/20 to-[#4075f9]/20' : 'from-gray-800 to-gray-900'">
+                            <span *ngIf="activeChat !== 'global'"
+                                class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-300 to-white">{{
+                                activeChat.charAt(0).toUpperCase() }}</span>
+                        </div>
+                        <h1 class="text-xl md:text-2xl font-bold mt-4 text-white">
+                            {{ activeChat === 'global' ? 'Welcome to Global!' : 'Direct message with ' + activeChat }}
+                        </h1>
+                        <p class="text-gray-500 text-xs md:text-sm mt-2 max-w-sm mx-auto">
+                            {{ activeChat === 'global' ? 'Ephemeral public channel. Messages disappear upon disconnect.'
+                            : 'End-to-end encrypted direct connection.' }}
+                        </p>
+                    </div>
+
+                    <div *ngFor="let msg of filteredMessages; let i = index" class="group flex flex-col"
+                        [class.items-end]="msg.user === currentUser && !msg.isSystem"
+                        [class.items-start]="msg.user !== currentUser && !msg.isSystem"
+                        [class.items-center]="msg.isSystem" [class.my-1]="msg.isSystem">
+
+                        <!-- System Message -->
+                        <div *ngIf="msg.isSystem"
+                            class="text-center font-bold px-4 py-1.5 rounded-full bg-gray-900/80 border border-gray-800/80 backdrop-blur-sm text-[10px] md:text-xs shadow-sm"
+                            [ngClass]="{'text-[#c51ce9]': msg.eventType === 'join', 'text-[#dd3064]': msg.eventType === 'leave'}">
+                            {{ msg.message }}
                         </div>
 
-                        <!-- File Attachment -->
-                        <div *ngIf="msg.isFile" class="rounded-2xl shadow-md overflow-hidden"
-                            [class.border]="!msg.fileData?.startsWith('data:image/')"
-                            [class.border-gray-700]="!msg.fileData?.startsWith('data:image/')">
-                            <!-- Image Preview -->
-                            <img *ngIf="msg.fileData?.startsWith('data:image/')" [src]="msg.fileData"
-                                class="max-w-[250px] sm:max-w-sm rounded-2xl object-cover hover:opacity-90 transition-opacity cursor-pointer">
+                        <!-- Regular Message -->
+                        <div *ngIf="!msg.isSystem" class="flex items-end max-w-[85%] md:max-w-[70%]"
+                            [class.flex-row-reverse]="msg.user === currentUser"
+                            [class.space-x-reverse]="msg.user === currentUser">
 
-                            <!-- File Download Card -->
-                            <div *ngIf="!msg.fileData?.startsWith('data:image/')" class="p-4"
-                                [ngClass]="{'bg-gradient-to-br from-[#c51ce9]/80 to-[#8a33ed]/80': msg.user === currentUser, 'bg-gray-800': msg.user !== currentUser}">
-                                <div class="flex items-center space-x-3">
-                                    <div class="bg-black/30 p-2 rounded-lg">
-                                        <svg class="w-6 h-6" [class.text-white]="msg.user === currentUser"
-                                            [class.text-[#c51ce9]]="msg.user !== currentUser" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                            </path>
-                                        </svg>
+                            <!-- Avatar (only for others) -->
+                            <div *ngIf="msg.user !== currentUser" class="flex-shrink-0 mb-1 opacity-90 mr-2">
+                                <div
+                                    class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center border border-gray-700">
+                                    <span class="text-gray-400 text-[10px] md:text-xs font-bold">{{
+                                        msg.user.charAt(0).toUpperCase() }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Message Bubble -->
+                            <div class="flex flex-col relative" [class.items-end]="msg.user === currentUser"
+                                [class.items-start]="msg.user !== currentUser">
+                                <span
+                                    *ngIf="msg.user !== currentUser && (i === 0 || filteredMessages[i-1].user !== msg.user || filteredMessages[i-1].isSystem)"
+                                    class="text-gray-400 text-[10px] md:text-xs mb-1 ml-1 font-medium">{{ msg.user
+                                    }}</span>
+
+                                <!-- Standard Text -->
+                                <div *ngIf="!msg.isFile"
+                                    class="px-4 py-2 md:px-5 md:py-3 rounded-2xl text-sm leading-relaxed shadow-md transition-all"
+                                    [ngClass]="{
+                                        'bg-gradient-to-br from-[#c51ce9] to-[#4075f9] text-white rounded-br-sm': msg.user === currentUser,
+                                        'bg-gray-800/90 border border-gray-700/50 text-gray-100 rounded-bl-sm backdrop-blur-sm': msg.user !== currentUser
+                                    }">
+                                    <p [innerHTML]="msg.message"></p>
+                                </div>
+
+                                <!-- File Attachment -->
+                                <div *ngIf="msg.isFile" class="rounded-2xl shadow-md overflow-hidden bg-gray-900"
+                                    [class.border]="!msg.fileData?.startsWith('data:image/')"
+                                    [class.border-gray-700]="!msg.fileData?.startsWith('data:image/')">
+
+                                    <!-- Image Preview -->
+                                    <img *ngIf="msg.fileData?.startsWith('data:image/')" [src]="msg.fileData"
+                                        class="max-w-[200px] md:max-w-sm rounded-2xl object-cover hover:opacity-90 transition-opacity cursor-pointer border border-gray-800/50">
+
+                                    <!-- File Download Card -->
+                                    <div *ngIf="!msg.fileData?.startsWith('data:image/')" class="p-3 md:p-4"
+                                        [ngClass]="{'bg-gradient-to-br from-[#c51ce9]/90 to-[#4075f9]/90': msg.user === currentUser, 'bg-gray-800/90': msg.user !== currentUser}">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="bg-black/30 p-2 rounded-lg">
+                                                <svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                                    </path>
+                                                </svg>
+                                            </div>
+                                            <div class="flex-1 min-w-0 pr-2 md:pr-4">
+                                                <p class="text-xs md:text-sm font-bold truncate text-white">{{
+                                                    msg.fileName }}</p>
+                                                <p class="text-[10px] md:text-xs mt-0.5 opacity-80 text-gray-200">
+                                                    Attachment</p>
+                                            </div>
+                                            <a [href]="msg.fileData" [download]="msg.fileName"
+                                                class="p-1.5 md:p-2 bg-black/20 hover:bg-black/40 rounded-lg transition-colors cursor-pointer text-white">
+                                                <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4">
+                                                    </path>
+                                                </svg>
+                                            </a>
+                                        </div>
                                     </div>
-                                    <div class="flex-1 min-w-0 pr-4">
-                                        <p class="text-sm font-bold truncate"
-                                            [class.text-white]="msg.user === currentUser"
-                                            [class.text-gray-200]="msg.user !== currentUser">{{ msg.fileName }}</p>
-                                        <p class="text-xs mt-0.5 opacity-70"
-                                            [class.text-white]="msg.user === currentUser"
-                                            [class.text-gray-400]="msg.user !== currentUser">Document</p>
-                                    </div>
-                                    <a [href]="msg.fileData" [download]="msg.fileName"
-                                        class="p-2 bg-black/20 hover:bg-black/40 rounded-lg transition-colors cursor-pointer text-white">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4">
-                                            </path>
-                                        </svg>
-                                    </a>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-            </div>
-        </div>
+                <!-- Input Area -->
+                <div class="border-t border-purple-900 pb-safe">
+                    <div class="w-full relative flex items-end">
+                        <div
+                            class="absolute left-2 md:left-3 bottom-0 mb-2 md:mb-3 text-gray-400 hover:text-white transition-colors flex items-center">
+                            <label for="file-upload" class="cursor-pointer p-1">
+                                <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
+                                    </path>
+                                </svg>
+                            </label>
+                            <input id="file-upload" type="file" class="hidden" (change)="onFileSelected($event)">
+                        </div>
 
-        <!-- Input Area -->
-        <div class="p-4 bg-gray-900/90 backdrop-blur-lg border-t border-gray-800 pb-safe">
-            <div class="max-w-4xl mx-auto relative flex items-end">
+                        <textarea [(ngModel)]="newMessage" (keydown.enter)="sendMessage($event)"
+                            class="w-full bg-gray-900/50 text-white placeholder-gray-500 border border-gray-700/50 py-2 md:py-3 pl-10 md:pl-12 pr-12 md:pr-14 focus:outline-none focus:ring-2 focus:ring-[#c51ce9]/50 focus:border-transparent transition-all shadow-inner resize-none min-h-[44px] md:min-h-[50px] max-h-32 text-sm"
+                            [placeholder]="activeChat === 'global' ? 'Message global chat...' : 'Message ' + activeChat + '...'"
+                            rows="1"></textarea>
 
-                <div class="absolute left-3 bottom-0 mb-3 text-gray-500 flex items-center space-x-2">
-                    <label for="file-upload" class="cursor-pointer">
-                        <svg class="w-6 h-6 hover:text-[#c51ce9] transition-colors" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
-                            </path>
-                        </svg>
-                    </label>
-                    <input id="file-upload" type="file" class="hidden" (change)="onFileSelected($event)">
+                        <button (click)="sendMessage()" [disabled]="!newMessage.trim()"
+                            class="absolute right-1.5 md:right-2 bottom-0 mb-1.5 md:mb-2 p-1.5 md:p-2 bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white rounded-xl hover:from-[#d13df0] hover:to-[#5c8aff] focus:outline-none transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center">
+                            <svg class="h-4 w-4 md:h-5 md:w-5 transform rotate-90" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path
+                                    d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-
-                <textarea [(ngModel)]="newMessage" (keydown.enter)="sendMessage($event)"
-                    class="w-full bg-gray-950 text-gray-100 placeholder-gray-500 border border-gray-700 rounded-2xl py-3 pl-12 pr-14 focus:outline-none focus:ring-2 focus:ring-[#4075f9]/50 focus:border-transparent transition-all shadow-inner resize-none min-h-[50px] max-h-32"
-                    [placeholder]="activeChat === 'global' ? 'Message #global...' : 'Message @' + activeChat + '...'"
-                    rows="1"></textarea>
-
-                <button (click)="sendMessage()" [disabled]="!newMessage.trim()"
-                    class="absolute right-2 bottom-0 mb-2 p-2 bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white rounded-xl hover:from-[#d13df0] hover:to-[#5c8aff] focus:outline-none transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95 flex items-center justify-center">
-                    <svg class="h-5 w-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                            d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z">
-                        </path>
-                    </svg>
-                </button>
-            </div>
+            </main>
         </div>
-    </main>
-
-    <!-- Right Sidebar -->
-    <aside class="w-64 bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl z-10 hidden lg:flex">
-        <div class="p-6 border-b border-gray-800 bg-gradient-to-l from-gray-900 to-gray-900/50">
-            <h2 class="text-lg font-bold text-gray-200">{{ activeChat === 'global' ? 'Room Details' : 'User Profile' }}
-            </h2>
-            <p class="text-gray-500 text-xs mt-1 font-medium">{{ activeChat === 'global' ? 'Global Chatroom' : '@' +
-                activeChat }}</p>
-        </div>
-
-        <!-- Global Context -->
-        <div *ngIf="activeChat === 'global'"
-            class="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center text-gray-500 space-y-4">
-            <div
-                class="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#c51ce9]/20 to-[#4075f9]/20 flex items-center justify-center border border-gray-700/50">
-                <span
-                    class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-[#c51ce9] to-[#4075f9]">#</span>
-            </div>
-            <div class="text-center">
-                <p class="text-sm font-semibold text-gray-300">Public Channel</p>
-                <p class="text-xs text-gray-500 mt-2">Ephemeral messaging.<br>No logs, no persistence.</p>
-            </div>
-        </div>
-
-        <!-- User Context -->
-        <div *ngIf="activeChat !== 'global'"
-            class="flex-1 overflow-y-auto p-4 flex flex-col items-center pt-10 text-gray-500 space-y-4">
-            <div
-                class="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center border-[3px] border-gray-700 shadow-xl relative">
-                <span class="text-4xl font-bold text-gray-400">{{ activeChat.charAt(0).toUpperCase() }}</span>
-                <div class="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-[3px] border-gray-900">
-                </div>
-            </div>
-            <div class="text-center mt-2">
-                <p class="text-lg font-bold text-white">{{ activeChat }}</p>
-                <p class="text-xs text-green-400 mt-1 font-medium uppercase tracking-widest">Online</p>
-            </div>
-            <div class="w-full h-px bg-gray-800 my-4"></div>
-            <div class="w-full text-left px-2">
-                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">Direct Message</p>
-                <p class="text-sm text-gray-400 leading-relaxed">End-to-end ephemeral connection established. Messages
-                    and files shared here vanish upon disconnect.</p>
-            </div>
-        </div>
-    </aside>
+    </div>
 </div>
-
-<!-- Add some custom CSS just for the scrollbar to keep it sleek -->
-<style>
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: #374151;
-        border-radius: 20px;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background-color: #4b5563;
-    }
-
-    .pb-safe {
-        padding-bottom: env(safe-area-inset-bottom, 1rem);
-    }
-</style>

@@ -29,6 +29,9 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   get filteredMessages(): ChatMessage[] {
+    if (this.activeChat === 'global') {
+      return this.messages.filter(m => !m.isPrivate);
+    }
     return this.messages.filter(m => m.toUser === this.activeChat);
   }
 
@@ -103,7 +106,6 @@ export class ChatComponent implements OnInit, OnDestroy {
     if (!this.newMessage.trim()) return;
 
     const msg = this.newMessage;
-    this.newMessage = ''; // clear early
 
     if (this.activeChat === 'global') {
       await this.chatService.sendMessage(msg);
