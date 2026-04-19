@@ -115,6 +115,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   async onFileSelected(event: any) {
+    console.log(event)
     const file = event.target.files[0];
     if (file) {
       const target = this.activeChat === 'global' ? undefined : this.activeChat;
