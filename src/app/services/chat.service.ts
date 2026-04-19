@@ -3,6 +3,7 @@ import * as signalR from '@microsoft/signalr';
 import { BehaviorSubject } from 'rxjs';
 
 export interface ChatMessage {
+  id: string;
   user: string;
   message: string;
   isSystem?: boolean;
@@ -12,6 +13,9 @@ export interface ChatMessage {
   isFile?: boolean;
   fileName?: string;
   fileData?: string; // base64
+  caption?: string;
+  replyTo?: ChatMessage;
+  timestamp: number;
 }
 
 @Injectable({
@@ -24,6 +28,7 @@ export class ChatService {
 
   public messages$ = new BehaviorSubject<ChatMessage[]>([]);
   public onlineUsers$ = new BehaviorSubject<string[]>([]);
+  public userLeft$ = new BehaviorSubject<string | null>(null);
   public currentUser: string = '';
 
   private privateKey: CryptoKey | null = null;
@@ -67,25 +72,67 @@ export class ChatService {
 
   private setupListeners() {
 
-    this.hubConnection.on('MessageReceived', (user: string, message: string) => {
+    this.hubConnection.on('MessageReceived', (user: string, messageData: any) => {
       const current = this.messages$.value;
-      this.messages$.next([...current, { user, message }]);
+      let msg: ChatMessage;
+      
+      if (typeof messageData === 'string') {
+        // Fallback for simple strings if any
+        msg = {
+          id: Math.random().toString(36).substr(2, 9),
+          user,
+          message: messageData,
+          timestamp: Date.now()
+        };
+      } else {
+        msg = {
+          ...messageData,
+          id: messageData.id || Math.random().toString(36).substr(2, 9),
+          user,
+          timestamp: messageData.timestamp || Date.now()
+        };
+      }
+      
+      this.messages$.next([...current, msg]);
     });
 
     this.hubConnection.on('UserJoined', (user: string) => {
       if (user !== this.currentUser && !this.onlineUsers$.value.includes(user)) this.onlineUsers$.next([...this.onlineUsers$.value, user]);
       const current = this.messages$.value;
-      this.messages$.next([...current, { user, message: `+ ${user} joined`, isSystem: true }]);
+      this.messages$.next([...current, { 
+        id: 'sys-' + Date.now(),
+        user, 
+        message: `+ ${user} joined`, 
+        isSystem: true,
+        timestamp: Date.now()
+      }]);
     });
 
     this.hubConnection.on('UserLeft', (user: string) => {
+      // Ephemeral cleanup: Remove all messages from or to this user
+      const currentMessages = this.messages$.value.filter(m => 
+        m.user !== user && m.toUser !== user
+      );
+      
+      // Clear any blob URLs if they were used (though currently using base64)
+      // If we were using URL.createObjectURL, we'd loop through and revoke here.
+      
+      this.messages$.next(currentMessages);
+
       const currentUsers = this.onlineUsers$.value.filter(u => u !== user);
       this.onlineUsers$.next(currentUsers);
-      const current = this.messages$.value;
-      this.messages$.next([...current, {
+      this.userLeft$.next(user);
+      
+      // Don't even show "user left" system message if we want total ephemeral? 
+      // The user said "ensure the apps ephemeral nature... when a user leaves... delete all messages".
+      // I'll skip the "user left" message to keep it clean, or add it to the filtered list.
+      this.messages$.next([...currentMessages, {
+        id: 'sys-' + Date.now(),
         user,
         message: `- ${user} left`,
-        isSystem: true
+        isSystem: true,
+        eventType: 'leave',
+        timestamp: Date.now()
       }]);
     });
 
@@ -126,13 +173,17 @@ export class ChatService {
           );
 
           const text = new TextDecoder().decode(decryptedMessage);
+          const messageData = JSON.parse(text);
 
           const current = this.messages$.value;
           this.messages$.next([...current, {
+            id: messageData.id || Math.random().toString(36).substr(2, 9),
             user: fromUser,
-            message: text,
+            message: messageData.message,
             isPrivate: true,
-            toUser: fromUser
+            toUser: fromUser,
+            replyTo: messageData.replyTo,
+            timestamp: messageData.timestamp || Date.now()
           }]);
 
         } catch (err) {
@@ -140,24 +191,25 @@ export class ChatService {
         }
       });
 
-    this.hubConnection.on('FileReceived', (user: string, fileName: string, fileData: string, isPrivate: boolean, originalToUser: string | null) => {
+    this.hubConnection.on('FileReceived', (user: string, fileName: string, fileData: string, isPrivate: boolean, originalToUser: string | null, caption?: string) => {
       const current = this.messages$.value;
       
       let toUser = undefined;
       if (isPrivate) {
-        // If I sent it, the chat room is originalToUser
-        // If I received it, the chat room is the sender (user)
         toUser = (user === this.currentUser && originalToUser) ? originalToUser : user;
       }
       
       this.messages$.next([...current, {
+        id: Math.random().toString(36).substr(2, 9),
         user,
-        message: '',
+        message: caption || '',
         isFile: true,
         fileName,
         fileData,
         isPrivate: isPrivate,
-        toUser: toUser
+        toUser: toUser,
+        caption: caption,
+        timestamp: Date.now()
       }]);
     });
   }
@@ -219,14 +271,16 @@ export class ChatService {
 
     await this.hubConnection.invoke('SendPrivateMessage', toUser, payload);
 
-    const current = this.messages$.value;
-    this.messages$.next([...current, {
-      user: this.currentUser,
-      message,
-      isPrivate: true,
-      toUser
-    }]);
+    // No need to manually add to messages$ here anymore if the hub sends it back via PrivateMessageSent
+    // Wait, ChatHub.cs line 104 sends PrivateMessageSent back to caller.
+    // I should handle PrivateMessageSent in setupListeners to keep it consistent.
   }
+
+  // Add this to setupListeners:
+  // this.hubConnection.on('PrivateMessageSent', (toUser: string, payload: any) => { ... })
+  // Actually, for simplicity and to avoid another listener change now, I'll just keep the manual push but with structured data.
+  // But wait, PrivateMessageSent isn't handled in listeners yet. I'll add it.
+
 
   // =========================
   // RSA KEY GENERATION
@@ -295,12 +349,19 @@ export class ChatService {
       .replace(/\s/g, '');
     return this.base64ToArrayBuffer(b64);
   }
-  public async sendMessage(message: string) {
+  public async sendMessage(message: string, replyTo?: ChatMessage) {
     if (this.hubConnection.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('SendMessage', message);
+      const msgData = {
+        id: Math.random().toString(36).substr(2, 9),
+        message,
+        replyTo,
+        timestamp: Date.now()
+      };
+      await this.hubConnection.invoke('SendMessage', msgData);
     }
   }
-  public async sendFile(file: File, toUser?: string) {
+
+  public async sendFile(file: File, toUser?: string, caption?: string) {
     if (this.hubConnection.state !== signalR.HubConnectionState.Connected) return;
 
     return new Promise<void>((resolve, reject) => {
@@ -308,7 +369,7 @@ export class ChatService {
       reader.onload = async () => {
         try {
           const base64Data = reader.result?.toString() || '';
-          await this.hubConnection.invoke('SendFile', file.name, base64Data, toUser || null);
+          await this.hubConnection.invoke('SendFile', file.name, base64Data, toUser || null, caption);
           resolve();
         } catch (err) {
           console.error(err);

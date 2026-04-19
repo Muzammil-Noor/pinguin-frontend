@@ -193,15 +193,24 @@
 
                             <!-- Message Bubble -->
                             <div class="flex flex-col relative" [class.items-end]="msg.user === currentUser"
-                                [class.items-start]="msg.user !== currentUser">
+                                [class.items-start]="msg.user !== currentUser" (dblclick)="setReply(msg)">
                                 <span
                                     *ngIf="msg.user !== currentUser && (i === 0 || filteredMessages[i-1].user !== msg.user || filteredMessages[i-1].isSystem)"
                                     class="text-gray-400 text-[10px] md:text-xs mb-1 ml-1 font-medium">{{ msg.user
                                     }}</span>
 
+                                <!-- Reply Content -->
+                                <div *ngIf="msg.replyTo" 
+                                     class="mb-1 p-2 rounded-lg bg-black/20 border-l-4 border-purple-500 text-[11px] max-w-full opacity-80 cursor-pointer"
+                                     [class.mr-1]="msg.user === currentUser"
+                                     [class.ml-1]="msg.user !== currentUser">
+                                    <div class="font-bold text-purple-400 mb-0.5">{{ msg.replyTo.user }}</div>
+                                    <div class="truncate text-gray-300">{{ msg.replyTo.message || (msg.replyTo.isFile ? 'File: ' + msg.replyTo.fileName : '') }}</div>
+                                </div>
+
                                 <!-- Standard Text -->
                                 <div *ngIf="!msg.isFile"
-                                    class="px-4 py-2 md:px-5 md:py-3 rounded-2xl text-sm leading-relaxed shadow-md transition-all"
+                                    class="px-4 py-2 md:px-5 md:py-3 rounded-2xl text-sm leading-relaxed shadow-md transition-all group-hover:scale-[1.01]"
                                     [ngClass]="{
                                         'bg-gradient-to-br from-[#c51ce9] to-[#4075f9] text-white rounded-br-sm': msg.user === currentUser,
                                         'bg-gray-800/90 border border-gray-700/50 text-gray-100 rounded-bl-sm backdrop-blur-sm': msg.user !== currentUser
@@ -210,7 +219,7 @@
                                 </div>
 
                                 <!-- File Attachment -->
-                                <div *ngIf="msg.isFile" class="rounded-2xl shadow-md overflow-hidden bg-gray-900"
+                                <div *ngIf="msg.isFile" class="rounded-2xl shadow-md overflow-hidden bg-gray-900 group-hover:scale-[1.01] transition-transform"
                                     [class.border]="!msg.fileData?.startsWith('data:image/')"
                                     [class.border-gray-700]="!msg.fileData?.startsWith('data:image/')">
 
@@ -249,6 +258,11 @@
                                             </a>
                                         </div>
                                     </div>
+                                    
+                                    <!-- Caption for File -->
+                                    <div *ngIf="msg.message" class="px-4 py-2 text-sm text-gray-200 bg-gray-900/80 border-t border-gray-800/50">
+                                        {{ msg.message }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -256,11 +270,41 @@
                 </div>
 
                 <!-- Input Area -->
-                <div class="border-t border-purple-900 pb-safe">
+                <div class="border-t border-purple-900 pb-safe bg-black/20 backdrop-blur-sm">
+                    <!-- Reply Preview -->
+                    <div *ngIf="replyingTo" class="px-4 py-2 border-b border-purple-900/50 bg-purple-900/10 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-200">
+                        <div class="flex items-center space-x-2 overflow-hidden">
+                            <div class="w-1 h-8 bg-purple-500 rounded-full"></div>
+                            <div class="flex flex-col overflow-hidden">
+                                <span class="text-[10px] font-bold text-purple-400">Replying to {{ replyingTo.user }}</span>
+                                <span class="text-xs text-gray-400 truncate">{{ replyingTo.message || (replyingTo.isFile ? 'File: ' + replyingTo.fileName : '') }}</span>
+                            </div>
+                        </div>
+                        <button (click)="cancelReply()" class="text-gray-500 hover:text-white p-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- File Previews -->
+                    <div *ngIf="selectedFiles.length > 0" class="px-4 py-3 border-b border-purple-900/50 bg-gray-900/30 flex gap-3 overflow-x-auto custom-scrollbar animate-in slide-in-from-bottom-2 duration-200">
+                        <div *ngFor="let file of selectedFiles; let i = index" class="relative group flex-shrink-0">
+                            <div class="w-20 h-20 rounded-lg overflow-hidden border border-purple-900/50 bg-gray-800 flex items-center justify-center">
+                                <img *ngIf="file.type.startsWith('image/')" [src]="file.preview" class="w-full h-full object-cover">
+                                <div *ngIf="!file.type.startsWith('image/')" class="flex flex-col items-center p-2 text-center">
+                                    <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    <span class="text-[8px] text-gray-400 truncate w-full mt-1">{{ file.file.name }}</span>
+                                </div>
+                            </div>
+                            <button (click)="removeFile(i)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="w-full relative flex items-end">
                         <div
                             class="absolute left-2 md:left-3 bottom-0 mb-2 md:mb-3 text-gray-400 hover:text-white transition-colors flex items-center">
-                            <label for="file-upload" class="cursor-pointer p-1">
+                            <label for="file-upload" class="cursor-pointer p-1 hover:bg-gray-800 rounded-lg transition-colors">
                                 <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -268,16 +312,16 @@
                                     </path>
                                 </svg>
                             </label>
-                            <input id="file-upload" type="file" class="hidden" (change)="onFileSelected($event)">
+                            <input id="file-upload" type="file" class="hidden" (change)="onFileSelected($event)" multiple>
                         </div>
 
                         <textarea [(ngModel)]="newMessage" (keydown.enter)="sendMessage($event)"
-                            class="w-full bg-gray-900/50 text-white placeholder-gray-500 border border-gray-700/50 py-2 md:py-3 pl-10 md:pl-12 pr-12 md:pr-14 focus:outline-none focus:ring-2 focus:ring-[#c51ce9]/50 focus:border-transparent transition-all shadow-inner resize-none min-h-[44px] md:min-h-[50px] max-h-32 text-sm"
-                            [placeholder]="activeChat === 'global' ? 'Message global chat...' : 'Message ' + activeChat + '...'"
+                            class="w-full bg-gray-900/50 text-white placeholder-gray-500 border-none py-4 md:py-5 pl-10 md:pl-12 pr-12 md:pr-14 focus:outline-none transition-all resize-none min-h-[56px] max-h-48 text-sm"
+                            [placeholder]="selectedFiles.length > 0 ? 'Add a caption...' : (activeChat === 'global' ? 'Message global chat...' : 'Message ' + activeChat + '...')"
                             rows="1"></textarea>
 
-                        <button (click)="sendMessage()" [disabled]="!newMessage.trim()"
-                            class="absolute right-1.5 md:right-2 bottom-0 mb-1.5 md:mb-2 p-1.5 md:p-2 bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white rounded-xl hover:from-[#d13df0] hover:to-[#5c8aff] focus:outline-none transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center">
+                        <button (click)="sendMessage()" [disabled]="!newMessage.trim() && selectedFiles.length === 0"
+                            class="absolute right-1.5 md:right-2 bottom-0 mb-1.5 md:mb-2.5 p-2 md:p-2.5 bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white rounded-xl hover:from-[#d13df0] hover:to-[#5c8aff] focus:outline-none transition-all duration-200 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center">
                             <svg class="h-4 w-4 md:h-5 md:w-5 transform rotate-90" fill="currentColor"
                                 viewBox="0 0 20 20">
                                 <path

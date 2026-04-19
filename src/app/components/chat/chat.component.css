@@ -70,3 +70,37 @@
 .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 1rem);
 }
+
+.animate-in {
+    animation-duration: 0.3s;
+    animation-fill-mode: both;
+}
+
+@keyframes slide-in-from-bottom {
+    0% { transform: translateY(10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+.slide-in-from-bottom-2 {
+    animation-name: slide-in-from-bottom;
+}
+
+/* Ensure horizontal scrollbar for file previews looks good */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #374151 transparent;
+}
+
+/* Add a subtle glow to the active reply block */
+.reply-block {
+    background: rgba(197, 28, 233, 0.1);
+    border-left: 3px solid #c51ce9;
+}
+
+textarea::placeholder {
+    transition: opacity 0.3s ease;
+}
+
+textarea:focus::placeholder {
+    opacity: 0.5;
+}

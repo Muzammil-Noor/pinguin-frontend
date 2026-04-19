@@ -22,6 +22,9 @@ export class ChatComponent implements OnInit, OnDestroy {
   openDMs: string[] = [];
   unreadDMs: Set<string> = new Set<string>();
 
+  replyingTo: ChatMessage | null = null;
+  selectedFiles: { file: File, preview: string, type: string }[] = [];
+
   private subs = new Subscription();
 
   constructor(private chatService: ChatService, private router: Router) {
@@ -54,6 +57,24 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   setActiveChat(chatId: string) {
     this.activeChat = chatId;
+  }
+
+  setReply(msg: ChatMessage) {
+    if (msg.isSystem) return;
+    this.replyingTo = msg;
+    // Focus textarea
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea');
+      if (textarea) textarea.focus();
+    }, 100);
+  }
+
+  cancelReply() {
+    this.replyingTo = null;
+  }
+
+  removeFile(index: number) {
+    this.selectedFiles.splice(index, 1);
   }
 
   ngOnInit() {
@@ -92,6 +113,17 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.subs.add(
       this.chatService.onlineUsers$.subscribe(users => this.onlineUsers = users)
     );
+
+    this.subs.add(
+      this.chatService.userLeft$.subscribe(user => {
+        if (!user) return;
+        this.openDMs = this.openDMs.filter(dm => dm !== user);
+        this.unreadDMs.delete(user);
+        if (this.activeChat === user) {
+          this.activeChat = 'global';
+        }
+      })
+    );
   }
 
   ngOnDestroy() {
@@ -100,28 +132,58 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   async sendMessage(event?: Event) {
     if (event) {
-      event.preventDefault(); // Prevent newline in textarea on enter
+      event.preventDefault();
     }
 
-    if (!this.newMessage.trim()) return;
+    if (!this.newMessage.trim() && this.selectedFiles.length === 0) return;
 
     const msg = this.newMessage;
+    const reply = this.replyingTo || undefined;
 
-    if (this.activeChat === 'global') {
-      await this.chatService.sendMessage(msg);
+    // Send files first
+    if (this.selectedFiles.length > 0) {
+      for (let i = 0; i < this.selectedFiles.length; i++) {
+        const fileObj = this.selectedFiles[i];
+        // Send caption only with the first file or all? Let's say first one if it's a "batch" or just first one.
+        // Usually, message + multiple files are separate.
+        // User said "file and a message to be sent together where the message can act as a caption".
+        // We'll send the caption with the first file and clear it, or send it with all?
+        // Let's send the caption with the first file and then empty strings for others if multiple.
+        const caption = i === 0 ? msg : '';
+        const target = this.activeChat === 'global' ? undefined : this.activeChat;
+        await this.chatService.sendFile(fileObj.file, target, caption);
+      }
     } else {
-      await this.chatService.sendPrivateMessage(this.activeChat, msg);
+      // Send regular message
+      if (this.activeChat === 'global') {
+        await this.chatService.sendMessage(msg, reply);
+      } else {
+        await this.chatService.sendPrivateMessage(this.activeChat, msg); // Note: Private message reply logic not fully implemented in service yet
+      }
     }
+
+    this.newMessage = '';
+    this.selectedFiles = [];
+    this.replyingTo = null;
   }
 
   async onFileSelected(event: any) {
-    console.log(event)
-    const file = event.target.files[0];
-    if (file) {
-      const target = this.activeChat === 'global' ? undefined : this.activeChat;
-      await this.chatService.sendFile(file, target);
-      // Reset input
-      event.target.value = '';
+    const files = event.target.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.selectedFiles.push({
+          file: file,
+          preview: e.target.result,
+          type: file.type
+        });
+      };
+      reader.readAsDataURL(file);
     }
+    // Reset input
+    event.target.value = '';
   }
 }
