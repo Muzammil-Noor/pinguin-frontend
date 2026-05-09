@@ -18,6 +18,17 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface Chatroom {
+  id: string;
+  name: string;
+  owner: string;
+  members: string[];
+}
+
+export interface RoomMessage extends ChatMessage {
+  roomId: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -27,6 +38,8 @@ export class ChatService {
   private backendUrl = 'http://localhost:5000';
 
   public messages$ = new BehaviorSubject<ChatMessage[]>([]);
+  public chatrooms$ = new BehaviorSubject<Chatroom[]>([]);
+  public roomMessages$ = new BehaviorSubject<RoomMessage[]>([]);
   public onlineUsers$ = new BehaviorSubject<string[]>([]);
   public userLeft$ = new BehaviorSubject<string | null>(null);
   public currentUser: string = '';
@@ -104,6 +117,7 @@ export class ChatService {
         user, 
         message: `+ ${user} joined`, 
         isSystem: true,
+        eventType: 'join',
         timestamp: Date.now()
       }]);
     });
@@ -212,6 +226,112 @@ export class ChatService {
         timestamp: Date.now()
       }]);
     });
+
+    this.hubConnection.on('RoomCreated', (room: Chatroom) => {
+      this.chatrooms$.next([...this.chatrooms$.value, room]);
+    });
+
+    this.hubConnection.on('RoomDeleted', (roomId: string) => {
+      this.chatrooms$.next(this.chatrooms$.value.filter(r => r.id !== roomId));
+    });
+
+    this.hubConnection.on('RoomRenamed', (roomId: string, newName: string) => {
+      const rooms = this.chatrooms$.value.map(r => r.id === roomId ? { ...r, name: newName } : r);
+      this.chatrooms$.next(rooms);
+    });
+
+    this.hubConnection.on('RoomInvited', (room: Chatroom) => {
+      if (!this.chatrooms$.value.find(r => r.id === room.id)) {
+        this.chatrooms$.next([...this.chatrooms$.value, room]);
+      }
+    });
+
+    this.hubConnection.on('KickedFromRoom', (roomId: string) => {
+      this.chatrooms$.next(this.chatrooms$.value.filter(r => r.id !== roomId));
+    });
+
+    this.hubConnection.on('RoomMemberJoined', (roomId: string, username: string) => {
+      const rooms = this.chatrooms$.value.map(r => {
+        if (r.id === roomId && !r.members.includes(username)) {
+          return { ...r, members: [...r.members, username] };
+        }
+        return r;
+      });
+      this.chatrooms$.next(rooms);
+    });
+
+    this.hubConnection.on('RoomMemberLeft', (roomId: string, username: string, newOwner: string | null) => {
+      const rooms = this.chatrooms$.value.map(r => {
+        if (r.id === roomId) {
+          const members = r.members.filter(m => m !== username);
+          return { ...r, members, owner: newOwner || r.owner };
+        }
+        return r;
+      });
+      this.chatrooms$.next(rooms);
+    });
+
+    this.hubConnection.on('RoomMessageReceived', async (roomId: string, fromUser: string, payload: any) => {
+      if (!this.privateKey) return;
+      
+      const encryptedKeyForMe = payload.keyMap[this.currentUser];
+      if (!encryptedKeyForMe) return; // Not meant for me or I wasn't in room when sent
+
+      try {
+        const decryptedAesKey = await crypto.subtle.decrypt(
+          { name: 'RSA-OAEP' },
+          this.privateKey,
+          this.base64ToArrayBuffer(encryptedKeyForMe)
+        );
+
+        const aesKey = await crypto.subtle.importKey(
+          'raw',
+          decryptedAesKey,
+          { name: 'AES-GCM' },
+          false,
+          ['decrypt']
+        );
+
+        const decryptedMessage = await crypto.subtle.decrypt(
+          {
+            name: 'AES-GCM',
+            iv: this.base64ToArrayBuffer(payload.iv)
+          },
+          aesKey,
+          this.base64ToArrayBuffer(payload.ciphertext)
+        );
+
+        const text = new TextDecoder().decode(decryptedMessage);
+        const messageData = JSON.parse(text);
+
+        const current = this.roomMessages$.value;
+        this.roomMessages$.next([...current, {
+          id: messageData.id || Math.random().toString(36).substr(2, 9),
+          roomId,
+          user: fromUser,
+          message: messageData.message,
+          replyTo: messageData.replyTo,
+          timestamp: messageData.timestamp || Date.now()
+        }]);
+      } catch (err) {
+        console.error("Room message decryption failed", err);
+      }
+    });
+
+    this.hubConnection.on('RoomFileReceived', (roomId: string, user: string, fileName: string, fileData: string, caption?: string) => {
+      const current = this.roomMessages$.value;
+      this.roomMessages$.next([...current, {
+        id: Math.random().toString(36).substr(2, 9),
+        roomId,
+        user,
+        message: caption || '',
+        isFile: true,
+        fileName,
+        fileData,
+        caption,
+        timestamp: Date.now()
+      }]);
+    });
   }
 
   // =========================
@@ -271,15 +391,118 @@ export class ChatService {
 
     await this.hubConnection.invoke('SendPrivateMessage', toUser, payload);
 
-    // No need to manually add to messages$ here anymore if the hub sends it back via PrivateMessageSent
-    // Wait, ChatHub.cs line 104 sends PrivateMessageSent back to caller.
-    // I should handle PrivateMessageSent in setupListeners to keep it consistent.
+    const current = this.messages$.value;
+    this.messages$.next([...current, {
+      id: Math.random().toString(36).substr(2, 9),
+      user: this.currentUser,
+      message: message,
+      isPrivate: true,
+      toUser: toUser,
+      timestamp: Date.now()
+    }]);
   }
 
-  // Add this to setupListeners:
-  // this.hubConnection.on('PrivateMessageSent', (toUser: string, payload: any) => { ... })
-  // Actually, for simplicity and to avoid another listener change now, I'll just keep the manual push but with structured data.
-  // But wait, PrivateMessageSent isn't handled in listeners yet. I'll add it.
+
+  // =========================
+  // CHATROOMS
+  // =========================
+
+  public async createRoom(name: string): Promise<Chatroom | null> {
+    return await this.hubConnection.invoke('CreateRoom', name);
+  }
+
+  public async deleteRoom(roomId: string): Promise<boolean> {
+    return await this.hubConnection.invoke('DeleteRoom', roomId);
+  }
+
+  public async renameRoom(roomId: string, newName: string): Promise<boolean> {
+    return await this.hubConnection.invoke('RenameRoom', roomId, newName);
+  }
+
+  public async inviteToRoom(roomId: string, targetUsername: string): Promise<boolean> {
+    return await this.hubConnection.invoke('InviteToRoom', roomId, targetUsername);
+  }
+
+  public async kickFromRoom(roomId: string, targetUsername: string): Promise<boolean> {
+    return await this.hubConnection.invoke('KickFromRoom', roomId, targetUsername);
+  }
+
+  public async leaveRoom(roomId: string): Promise<void> {
+    await this.hubConnection.invoke('LeaveRoom', roomId);
+  }
+
+  public async getRooms(): Promise<Chatroom[]> {
+    return await this.hubConnection.invoke('GetRooms');
+  }
+
+  public async sendRoomMessage(roomId: string, message: string, replyTo?: ChatMessage) {
+    const room = this.chatrooms$.value.find(r => r.id === roomId);
+    if (!room) return;
+
+    // Generate AES key
+    const aesKey = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(JSON.stringify({
+      id: Math.random().toString(36).substr(2, 9),
+      message,
+      replyTo,
+      timestamp: Date.now()
+    }));
+
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      aesKey,
+      encoded
+    );
+
+    const rawAesKey = await crypto.subtle.exportKey('raw', aesKey);
+
+    const keyMap: { [username: string]: string } = {};
+    for (const member of room.members) {
+      const memberPublicKey = await this.waitForPublicKey(member);
+      if (memberPublicKey) {
+        const encryptedKey = await crypto.subtle.encrypt(
+          { name: 'RSA-OAEP' },
+          memberPublicKey,
+          rawAesKey
+        );
+        keyMap[member] = this.arrayBufferToBase64(encryptedKey);
+      }
+    }
+
+    const payload = {
+      keyMap,
+      iv: this.arrayBufferToBase64(iv.buffer),
+      ciphertext: this.arrayBufferToBase64(ciphertext)
+    };
+
+    await this.hubConnection.invoke('SendRoomMessage', roomId, payload);
+  }
+
+  public async sendRoomFile(roomId: string, file: File, caption?: string) {
+    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) return;
+
+    return new Promise<void>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result?.toString() || '';
+          await this.hubConnection.invoke('SendRoomFile', roomId, file.name, base64Data, caption);
+          resolve();
+        } catch (err) {
+          console.error(err);
+          reject(err);
+        }
+      };
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  }
 
 
   // =========================

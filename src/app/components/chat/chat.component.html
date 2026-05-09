@@ -192,7 +192,7 @@
                             </div>
 
                             <!-- Message Bubble -->
-                            <div class="flex flex-col relative" [class.items-end]="msg.user === currentUser"
+                            <div class="flex flex-col relative min-w-0 max-w-full" [class.items-end]="msg.user === currentUser"
                                 [class.items-start]="msg.user !== currentUser" (dblclick)="setReply(msg)">
                                 <span
                                     *ngIf="msg.user !== currentUser && (i === 0 || filteredMessages[i-1].user !== msg.user || filteredMessages[i-1].isSystem)"
@@ -210,7 +210,7 @@
 
                                 <!-- Standard Text -->
                                 <div *ngIf="!msg.isFile"
-                                    class="px-4 py-2 md:px-5 md:py-3 rounded-2xl text-sm leading-relaxed shadow-md transition-all group-hover:scale-[1.01]"
+                                    class="px-4 py-2 md:px-5 md:py-3 rounded-2xl text-sm leading-relaxed shadow-md transition-all group-hover:scale-[1.01] break-words min-w-0 max-w-full"
                                     [ngClass]="{
                                         'bg-gradient-to-br from-[#c51ce9] to-[#4075f9] text-white rounded-br-sm': msg.user === currentUser,
                                         'bg-gray-800/90 border border-gray-700/50 text-gray-100 rounded-bl-sm backdrop-blur-sm': msg.user !== currentUser
@@ -273,9 +273,9 @@
                 <div class="border-t border-purple-900 pb-safe bg-black/20 backdrop-blur-sm">
                     <!-- Reply Preview -->
                     <div *ngIf="replyingTo" class="px-4 py-2 border-b border-purple-900/50 bg-purple-900/10 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-200">
-                        <div class="flex items-center space-x-2 overflow-hidden">
-                            <div class="w-1 h-8 bg-purple-500 rounded-full"></div>
-                            <div class="flex flex-col overflow-hidden">
+                        <div class="flex items-center space-x-2 overflow-hidden min-w-0 max-w-full">
+                            <div class="w-1 h-8 bg-purple-500 rounded-full flex-shrink-0"></div>
+                            <div class="flex flex-col overflow-hidden min-w-0">
                                 <span class="text-[10px] font-bold text-purple-400">Replying to {{ replyingTo.user }}</span>
                                 <span class="text-xs text-gray-400 truncate">{{ replyingTo.message || (replyingTo.isFile ? 'File: ' + replyingTo.fileName : '') }}</span>
                             </div>

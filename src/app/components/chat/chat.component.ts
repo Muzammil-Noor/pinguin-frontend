@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ChatService, ChatMessage } from '../../services/chat.service';
+import { ChatService, ChatMessage, Chatroom, RoomMessage } from '../../services/chat.service';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -22,6 +22,20 @@ export class ChatComponent implements OnInit, OnDestroy {
   openDMs: string[] = [];
   unreadDMs: Set<string> = new Set<string>();
 
+  chatrooms: Chatroom[] = [];
+  roomMessages: RoomMessage[] = [];
+  unreadRooms: Set<string> = new Set<string>();
+
+  showCreateRoomModal = false;
+  newRoomName = '';
+  showRenameRoomModal = false;
+  roomToRename: Chatroom | null = null;
+  renameRoomName = '';
+  showInviteModal = false;
+  roomToInvite: Chatroom | null = null;
+  selectedUserToInvite = '';
+  showRoomMenu = false;
+
   replyingTo: ChatMessage | null = null;
   selectedFiles: { file: File, preview: string, type: string }[] = [];
 
@@ -31,11 +45,27 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.currentUser = this.chatService.currentUser;
   }
 
-  get filteredMessages(): ChatMessage[] {
+  get filteredMessages(): (ChatMessage | RoomMessage)[] {
     if (this.activeChat === 'global') {
       return this.messages.filter(m => !m.isPrivate);
     }
-    return this.messages.filter(m => m.toUser === this.activeChat);
+    const room = this.chatrooms.find(r => r.id === this.activeChat);
+    if (room) {
+      return this.roomMessages.filter(m => m.roomId === this.activeChat);
+    }
+    return this.messages.filter(m => 
+      m.isPrivate && 
+      (m.user === this.activeChat || (m.user === this.currentUser && m.toUser === this.activeChat))
+    );
+  }
+
+  get activeRoom(): Chatroom | undefined {
+    return this.chatrooms.find(r => r.id === this.activeChat);
+  }
+
+  get availableUsersToInvite(): string[] {
+    if (!this.roomToInvite) return [];
+    return this.onlineUsers.filter(u => !this.roomToInvite!.members.includes(u));
   }
 
   setTab(tab: 'users' | 'rooms') {
@@ -57,6 +87,8 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   setActiveChat(chatId: string) {
     this.activeChat = chatId;
+    this.unreadRooms.delete(chatId);
+    this.showRoomMenu = false;
   }
 
   setReply(msg: ChatMessage) {
@@ -77,6 +109,64 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.selectedFiles.splice(index, 1);
   }
 
+  openCreateRoom() {
+    this.newRoomName = '';
+    this.showCreateRoomModal = true;
+  }
+
+  async createRoom() {
+    if (!this.newRoomName.trim()) return;
+    const room = await this.chatService.createRoom(this.newRoomName);
+    if (room) {
+      this.activeChat = room.id;
+    }
+    this.showCreateRoomModal = false;
+  }
+
+  openRenameRoom(room: Chatroom) {
+    this.roomToRename = room;
+    this.renameRoomName = room.name;
+    this.showRenameRoomModal = true;
+    this.showRoomMenu = false;
+  }
+
+  async renameRoom() {
+    if (this.roomToRename && this.renameRoomName.trim()) {
+      await this.chatService.renameRoom(this.roomToRename.id, this.renameRoomName);
+    }
+    this.showRenameRoomModal = false;
+  }
+
+  async deleteRoom(room: Chatroom) {
+    await this.chatService.deleteRoom(room.id);
+    if (this.activeChat === room.id) this.activeChat = 'global';
+    this.showRoomMenu = false;
+  }
+
+  async leaveRoom(room: Chatroom) {
+    await this.chatService.leaveRoom(room.id);
+    if (this.activeChat === room.id) this.activeChat = 'global';
+    this.showRoomMenu = false;
+  }
+
+  openInvite(room: Chatroom) {
+    this.roomToInvite = room;
+    this.selectedUserToInvite = '';
+    this.showInviteModal = true;
+    this.showRoomMenu = false;
+  }
+
+  async inviteUser() {
+    if (this.roomToInvite && this.selectedUserToInvite) {
+      await this.chatService.inviteToRoom(this.roomToInvite.id, this.selectedUserToInvite);
+    }
+    this.showInviteModal = false;
+  }
+
+  async kickUser(room: Chatroom, username: string) {
+    await this.chatService.kickFromRoom(room.id, username);
+  }
+
   ngOnInit() {
     if (!this.currentUser) {
       this.router.navigate(['/']);
@@ -91,13 +181,47 @@ export class ChatComponent implements OnInit, OnDestroy {
         this.messages = msgs;
 
         newMsgs.forEach(m => {
-          if (m.isPrivate && m.toUser && m.toUser !== 'global') {
-            if (!this.openDMs.includes(m.toUser) && m.toUser !== this.currentUser) {
-              this.openDMs.push(m.toUser);
+          if (m.isPrivate) {
+            const otherUser = m.user === this.currentUser ? m.toUser : m.user;
+            if (otherUser && otherUser !== 'global' && otherUser !== this.currentUser) {
+              if (!this.openDMs.includes(otherUser)) {
+                this.openDMs.push(otherUser);
+              }
+              if (otherUser !== this.activeChat && m.user !== this.currentUser) {
+                this.unreadDMs.add(otherUser);
+              }
             }
-            if (m.toUser !== this.activeChat && m.user !== this.currentUser) {
-              this.unreadDMs.add(m.toUser);
-            }
+          }
+        });
+
+        setTimeout(() => {
+          const scrollable = document.querySelector('.custom-scrollbar');
+          if (scrollable) {
+            scrollable.scrollTop = scrollable.scrollHeight;
+          }
+        }, 100);
+      })
+    );
+
+    this.subs.add(
+      this.chatService.chatrooms$.subscribe(rooms => {
+        this.chatrooms = rooms;
+        if (this.activeChat !== 'global' && !this.openDMs.includes(this.activeChat) && !rooms.find(r => r.id === this.activeChat)) {
+          this.activeChat = 'global';
+        }
+      })
+    );
+
+    let previousRoomMsgCount = 0;
+    this.subs.add(
+      this.chatService.roomMessages$.subscribe(msgs => {
+        const newMsgs = msgs.slice(previousRoomMsgCount);
+        previousRoomMsgCount = msgs.length;
+        this.roomMessages = msgs;
+
+        newMsgs.forEach(m => {
+          if (m.roomId !== this.activeChat && m.user !== this.currentUser) {
+            this.unreadRooms.add(m.roomId);
           }
         });
 
@@ -151,14 +275,20 @@ export class ChatComponent implements OnInit, OnDestroy {
         // Let's send the caption with the first file and then empty strings for others if multiple.
         const caption = i === 0 ? msg : '';
         const target = this.activeChat === 'global' ? undefined : this.activeChat;
-        await this.chatService.sendFile(fileObj.file, target, caption);
+        if (this.activeRoom) {
+          await this.chatService.sendRoomFile(this.activeRoom.id, fileObj.file, caption);
+        } else {
+          await this.chatService.sendFile(fileObj.file, target, caption);
+        }
       }
     } else {
       // Send regular message
       if (this.activeChat === 'global') {
         await this.chatService.sendMessage(msg, reply);
+      } else if (this.activeRoom) {
+        await this.chatService.sendRoomMessage(this.activeRoom.id, msg, reply);
       } else {
-        await this.chatService.sendPrivateMessage(this.activeChat, msg); // Note: Private message reply logic not fully implemented in service yet
+        await this.chatService.sendPrivateMessage(this.activeChat, msg);
       }
     }
 
