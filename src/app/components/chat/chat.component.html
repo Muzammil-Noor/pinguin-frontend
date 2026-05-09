@@ -83,7 +83,38 @@
 
                     <!-- Rooms Tab -->
                     <div *ngIf="activeTab === 'rooms'">
-                        <ul class="space-y-1 mb-4 mt-2">
+                        <!-- Rooms -->
+                        <div class="flex justify-between items-center mb-2 px-2 mt-4">
+                            <h3 class="hidden md:block text-gray-400 text-xs font-bold uppercase tracking-wider select-none">
+                                Chatrooms
+                            </h3>
+                            <button (click)="openCreateRoom()" class="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded p-0.5" title="Create Room">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </button>
+                        </div>
+                        <ul class="space-y-1 mb-4">
+                            <li *ngFor="let room of chatrooms">
+                                <div (click)="setActiveChat(room.id)"
+                                    class="flex items-center space-x-0 md:space-x-3 p-2 justify-center md:justify-start rounded-lg cursor-pointer transition-all"
+                                    [ngClass]="activeChat === room.id ? 'bg-gray-800/80 border border-gray-700/50 shadow-inner' : 'hover:bg-gray-800/50 border border-transparent'">
+                                    <div class="relative">
+                                        <div class="w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center border shadow-sm"
+                                            [ngClass]="unreadRooms.has(room.id) ? 'bg-[#bb2c45]/20 border-[#bb2c45]' : (activeChat === room.id ? 'bg-gradient-to-br from-[#c51ce9] to-[#4075f9] border-gray-600' : 'bg-gray-800 border-gray-600')">
+                                            <span class="font-bold text-sm"
+                                                [ngClass]="unreadRooms.has(room.id) ? 'text-[#bb2c45]' : (activeChat === room.id ? 'text-white' : 'text-gray-400')">{{
+                                                room.name.charAt(0).toUpperCase() }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="hidden md:flex flex-1 min-w-0 items-center justify-between">
+                                        <span class="text-sm font-bold truncate block"
+                                            [ngClass]="unreadRooms.has(room.id) ? 'text-[#bb2c45] drop-shadow-[0_0_8px_rgba(187,44,69,0.5)]' : (activeChat === room.id ? 'text-white' : 'text-gray-300')">{{ room.name }}</span>
+                                        <span *ngIf="room.owner === currentUser" class="text-[10px] ml-1 opacity-70">🔑</span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+
+                        <ul class="space-y-1 mb-4 mt-2 border-t border-gray-800/50 pt-2">
                             <li>
                                 <div (click)="setActiveChat('global')"
                                     class="flex items-center space-x-0 md:space-x-3 p-2 justify-center md:justify-start rounded-lg cursor-pointer transition-all"
@@ -134,13 +165,25 @@
                         <div *ngIf="activeChat !== 'global'"
                             class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800/80 shadow-inner">
                             <span class="font-bold text-gray-300">{{
-                                activeChat.charAt(0).toUpperCase() }}</span>
+                                activeRoom ? activeRoom.name.charAt(0).toUpperCase() : activeChat.charAt(0).toUpperCase() }}</span>
                         </div>
                         <div>
-                            <h2 class="text-white font-bold text-sm md:text-base">{{ activeChat === 'global' ? 'Global
-                                Chat' : activeChat }}</h2>
-                            <p class="text-xs text-green-400 font-medium opacity-80" *ngIf="activeChat !== 'global'">E2E
-                                Encrypted</p>
+                            <h2 class="text-white font-bold text-sm md:text-base">{{ activeRoom ? activeRoom.name : (activeChat === 'global' ? 'Global Chat' : activeChat) }}</h2>
+                            <p class="text-xs text-green-400 font-medium opacity-80" *ngIf="activeChat !== 'global'">
+                                {{ activeRoom ? activeRoom.members.length + ' members | E2E Encrypted' : 'E2E Encrypted' }}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div *ngIf="activeRoom" class="relative">
+                        <button (click)="showRoomMenu = !showRoomMenu" class="text-gray-400 hover:text-white p-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                        </button>
+                        <div *ngIf="showRoomMenu" class="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 py-1">
+                            <button *ngIf="activeRoom.owner === currentUser" (click)="openRenameRoom(activeRoom)" class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white">Rename Room</button>
+                            <button *ngIf="activeRoom.owner === currentUser" (click)="openInvite(activeRoom)" class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white">Invite Member</button>
+                            <button *ngIf="activeRoom.owner === currentUser" (click)="deleteRoom(activeRoom)" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800">Delete Room</button>
+                            <button *ngIf="activeRoom.owner !== currentUser" (click)="leaveRoom(activeRoom)" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800">Leave Room</button>
                         </div>
                     </div>
                 </header>
@@ -154,14 +197,13 @@
                             [ngClass]="activeChat === 'global' ? 'from-[#c51ce9]/20 to-[#4075f9]/20' : 'from-gray-800 to-gray-900'">
                             <span *ngIf="activeChat !== 'global'"
                                 class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-300 to-white">{{
-                                activeChat.charAt(0).toUpperCase() }}</span>
+                                activeRoom ? activeRoom.name.charAt(0).toUpperCase() : activeChat.charAt(0).toUpperCase() }}</span>
                         </div>
                         <h1 class="text-xl md:text-2xl font-bold mt-4 text-white">
-                            {{ activeChat === 'global' ? 'Welcome to Global!' : 'Direct message with ' + activeChat }}
+                            {{ activeRoom ? 'Welcome to ' + activeRoom.name + '!' : (activeChat === 'global' ? 'Welcome to Global!' : 'Direct message with ' + activeChat) }}
                         </h1>
                         <p class="text-gray-500 text-xs md:text-sm mt-2 max-w-sm mx-auto">
-                            {{ activeChat === 'global' ? 'Ephemeral public channel. Messages disappear upon disconnect.'
-                            : 'End-to-end encrypted direct connection.' }}
+                            {{ activeRoom ? 'End-to-end encrypted room. Messages visible only to members.' : (activeChat === 'global' ? 'Ephemeral public channel. Messages disappear upon disconnect.' : 'End-to-end encrypted direct connection.') }}
                         </p>
                     </div>
 
@@ -178,7 +220,7 @@
                         </div>
 
                         <!-- Regular Message -->
-                        <div *ngIf="!msg.isSystem" class="flex items-end max-w-[85%] md:max-w-[70%]"
+                        <div *ngIf="!msg.isSystem" class="flex items-end max-w-[85%] md:max-w-[70%] min-w-0"
                             [class.flex-row-reverse]="msg.user === currentUser"
                             [class.space-x-reverse]="msg.user === currentUser">
 
@@ -332,6 +374,65 @@
                     </div>
                 </div>
             </main>
+        </div>
+    </div>
+</div>
+
+<div *ngIf="showCreateRoomModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl">
+        <div class="px-6 py-4 border-b border-gray-800">
+            <h3 class="text-lg font-bold text-white">Create Room</h3>
+        </div>
+        <div class="p-6">
+            <input type="text" [(ngModel)]="newRoomName" placeholder="Room name" class="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-purple-500" (keydown.enter)="createRoom()">
+        </div>
+        <div class="px-6 py-4 bg-gray-800/50 flex justify-end space-x-3">
+            <button (click)="showCreateRoomModal = false" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">Cancel</button>
+            <button (click)="createRoom()" [disabled]="!newRoomName.trim()" class="px-4 py-2 text-sm font-bold bg-purple-600 hover:bg-purple-500 text-white rounded-lg disabled:opacity-50">Create</button>
+        </div>
+    </div>
+</div>
+
+<div *ngIf="showRenameRoomModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl">
+        <div class="px-6 py-4 border-b border-gray-800">
+            <h3 class="text-lg font-bold text-white">Rename Room</h3>
+        </div>
+        <div class="p-6">
+            <input type="text" [(ngModel)]="renameRoomName" class="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-purple-500" (keydown.enter)="renameRoom()">
+        </div>
+        <div class="px-6 py-4 bg-gray-800/50 flex justify-end space-x-3">
+            <button (click)="showRenameRoomModal = false" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">Cancel</button>
+            <button (click)="renameRoom()" [disabled]="!renameRoomName.trim()" class="px-4 py-2 text-sm font-bold bg-purple-600 hover:bg-purple-500 text-white rounded-lg disabled:opacity-50">Save</button>
+        </div>
+    </div>
+</div>
+
+<div *ngIf="showInviteModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl">
+        <div class="px-6 py-4 border-b border-gray-800">
+            <h3 class="text-lg font-bold text-white">Invite to {{ roomToInvite?.name }}</h3>
+        </div>
+        <div class="p-6">
+            <select [(ngModel)]="selectedUserToInvite" class="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-purple-500">
+                <option value="" disabled selected>Select user...</option>
+                <option *ngFor="let user of availableUsersToInvite" [value]="user">{{ user }}</option>
+            </select>
+            <p *ngIf="availableUsersToInvite.length === 0" class="text-xs text-gray-500 mt-2">No online users available to invite.</p>
+        </div>
+        <div class="px-6 py-4 bg-gray-800/50 flex justify-end space-x-3">
+            <button (click)="showInviteModal = false" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">Cancel</button>
+            <button (click)="inviteUser()" [disabled]="!selectedUserToInvite" class="px-4 py-2 text-sm font-bold bg-purple-600 hover:bg-purple-500 text-white rounded-lg disabled:opacity-50">Invite</button>
+        </div>
+        
+        <div *ngIf="roomToInvite?.members" class="px-6 py-4 border-t border-gray-800">
+            <h4 class="text-xs font-bold text-gray-400 mb-2 uppercase">Current Members</h4>
+            <ul class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+                <li *ngFor="let member of roomToInvite?.members" class="flex justify-between items-center text-sm">
+                    <span class="text-gray-300">{{ member }} <span *ngIf="member === roomToInvite?.owner" class="text-[10px]">🔑</span></span>
+                    <button *ngIf="member !== currentUser" (click)="kickUser(roomToInvite!, member)" class="text-red-400 hover:text-red-300 text-xs font-bold">Kick</button>
+                </li>
+            </ul>
         </div>
     </div>
 </div>

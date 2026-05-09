@@ -88,7 +88,7 @@ export class ChatService {
     this.hubConnection.on('MessageReceived', (user: string, messageData: any) => {
       const current = this.messages$.value;
       let msg: ChatMessage;
-      
+
       if (typeof messageData === 'string') {
         // Fallback for simple strings if any
         msg = {
@@ -105,17 +105,17 @@ export class ChatService {
           timestamp: messageData.timestamp || Date.now()
         };
       }
-      
+
       this.messages$.next([...current, msg]);
     });
 
     this.hubConnection.on('UserJoined', (user: string) => {
       if (user !== this.currentUser && !this.onlineUsers$.value.includes(user)) this.onlineUsers$.next([...this.onlineUsers$.value, user]);
       const current = this.messages$.value;
-      this.messages$.next([...current, { 
+      this.messages$.next([...current, {
         id: 'sys-' + Date.now(),
-        user, 
-        message: `+ ${user} joined`, 
+        user,
+        message: `+ ${user} joined`,
         isSystem: true,
         eventType: 'join',
         timestamp: Date.now()
@@ -124,19 +124,19 @@ export class ChatService {
 
     this.hubConnection.on('UserLeft', (user: string) => {
       // Ephemeral cleanup: Remove all messages from or to this user
-      const currentMessages = this.messages$.value.filter(m => 
+      const currentMessages = this.messages$.value.filter(m =>
         m.user !== user && m.toUser !== user
       );
-      
+
       // Clear any blob URLs if they were used (though currently using base64)
       // If we were using URL.createObjectURL, we'd loop through and revoke here.
-      
+
       this.messages$.next(currentMessages);
 
       const currentUsers = this.onlineUsers$.value.filter(u => u !== user);
       this.onlineUsers$.next(currentUsers);
       this.userLeft$.next(user);
-      
+
       // Don't even show "user left" system message if we want total ephemeral? 
       // The user said "ensure the apps ephemeral nature... when a user leaves... delete all messages".
       // I'll skip the "user left" message to keep it clean, or add it to the filtered list.
@@ -207,12 +207,12 @@ export class ChatService {
 
     this.hubConnection.on('FileReceived', (user: string, fileName: string, fileData: string, isPrivate: boolean, originalToUser: string | null, caption?: string) => {
       const current = this.messages$.value;
-      
+
       let toUser = undefined;
       if (isPrivate) {
         toUser = (user === this.currentUser && originalToUser) ? originalToUser : user;
       }
-      
+
       this.messages$.next([...current, {
         id: Math.random().toString(36).substr(2, 9),
         user,
@@ -273,7 +273,7 @@ export class ChatService {
 
     this.hubConnection.on('RoomMessageReceived', async (roomId: string, fromUser: string, payload: any) => {
       if (!this.privateKey) return;
-      
+
       const encryptedKeyForMe = payload.keyMap[this.currentUser];
       if (!encryptedKeyForMe) return; // Not meant for me or I wasn't in room when sent
 
