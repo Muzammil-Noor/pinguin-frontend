@@ -367,7 +367,11 @@ export class ChatService {
     );
 
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encoded = new TextEncoder().encode(message);
+    const encoded = new TextEncoder().encode(JSON.stringify({
+      id: Math.random().toString(36).substr(2, 9),
+      message,
+      timestamp: Date.now()
+    }));
 
     const ciphertext = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv },
@@ -525,7 +529,12 @@ export class ChatService {
     this.privateKey = keyPair.privateKey;
 
     const exported = await crypto.subtle.exportKey('spki', keyPair.publicKey);
-    return this.arrayBufferToPem(exported, 'PUBLIC KEY');
+    const pem = this.arrayBufferToPem(exported, 'PUBLIC KEY');
+
+    // Store own public key so we can encrypt messages for ourselves without timing out
+    this.publicKeys.set(this.currentUser, keyPair.publicKey);
+
+    return pem;
   }
 
   private async importPublicKey(pem: string): Promise<CryptoKey> {
