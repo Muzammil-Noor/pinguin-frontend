@@ -133,6 +133,11 @@ export class ChatService {
 
       this.messages$.next(currentMessages);
 
+      const currentRoomMessages = this.roomMessages$.value.filter(m =>
+        m.user !== user
+      );
+      this.roomMessages$.next(currentRoomMessages);
+
       const currentUsers = this.onlineUsers$.value.filter(u => u !== user);
       this.onlineUsers$.next(currentUsers);
       this.userLeft$.next(user);
