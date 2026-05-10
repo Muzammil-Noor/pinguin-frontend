@@ -427,6 +427,52 @@
                     </div>
                 </div>
             </main>
+
+            <!-- Right Sidebar for Chatroom -->
+            <aside *ngIf="activeRoom"
+                class="hidden lg:flex w-64 border-[4px] border-purple-900 rounded-lg flex-col z-10 transition-all duration-300 backdrop-blur-md bg-black/40">
+                <div class="p-4 border-b border-purple-900 flex flex-col justify-center">
+                    <h3 class="text-white font-bold text-lg truncate text-center">{{ activeRoom.name }}</h3>
+                    <p class="text-xs text-gray-400 text-center">{{ activeRoom.members.length }} members</p>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                    <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3 select-none">Members</h4>
+                    <ul class="space-y-2">
+                        <li *ngFor="let member of activeRoom.members" class="flex items-center justify-between group">
+                            <div class="flex items-center space-x-2 min-w-0">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
+                                    <span class="text-xs font-bold text-gray-300">{{ member.charAt(0).toUpperCase() }}</span>
+                                </div>
+                                <span class="text-sm text-gray-300 truncate block" [ngClass]="{'text-white font-bold': member === currentUser}">
+                                    {{ member }}
+                                </span>
+                                <span *ngIf="member === activeRoom.owner" class="text-[10px] ml-1 flex-shrink-0" title="Room Owner">🔑</span>
+                            </div>
+                            <button *ngIf="activeRoom.owner === currentUser && member !== currentUser" 
+                                (click)="kickUser(activeRoom, member)"
+                                class="text-red-400 hover:text-red-300 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                                Kick
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="p-4 border-t border-purple-900 space-y-2">
+                    <button *ngIf="activeRoom.owner === currentUser" (click)="openInvite(activeRoom)"
+                        class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        Invite Member
+                    </button>
+                    <button *ngIf="activeRoom.owner === currentUser" (click)="deleteRoom(activeRoom)"
+                        class="w-full py-2 bg-red-900/50 hover:bg-red-900/80 text-red-200 rounded-lg text-sm font-medium transition-colors border border-red-800/50">
+                        Delete Room
+                    </button>
+                    <button (click)="leaveRoom(activeRoom)"
+                        class="w-full py-2 bg-gray-800 hover:bg-red-900/50 hover:text-red-200 text-white rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-red-800/50">
+                        Leave Room
+                    </button>
+                </div>
+            </aside>
         </div>
     </div>
 </div>
