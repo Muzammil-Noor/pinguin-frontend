@@ -272,10 +272,10 @@
 
                                 <!-- Reply Content -->
                                 <div *ngIf="msg.replyTo"
-                                    class="mb-1 p-2 rounded-lg bg-black/20 border-l-4 border-purple-500 text-[11px] max-w-full opacity-80 cursor-pointer"
+                                    class="mb-1 p-2 rounded-lg bg-black/20 border-l-4 border-purple-500 text-[11px] max-w-full opacity-80 cursor-pointer overflow-hidden flex flex-col min-w-0"
                                     [class.mr-1]="msg.user === currentUser" [class.ml-1]="msg.user !== currentUser">
-                                    <div class="font-bold text-purple-400 mb-0.5">{{ msg.replyTo.user }}</div>
-                                    <div class="truncate text-gray-300">{{ msg.replyTo.message || (msg.replyTo.isFile ?
+                                    <div class="font-bold text-purple-400 mb-0.5 truncate">{{ msg.replyTo.user }}</div>
+                                    <div class="truncate text-gray-300 block">{{ msg.replyTo.message || (msg.replyTo.isFile ?
                                         'File: ' + msg.replyTo.fileName : '') }}</div>
                                 </div>
 
