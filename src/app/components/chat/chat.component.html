@@ -349,10 +349,10 @@
                         class="px-4 py-2 border-b border-purple-900/50 bg-purple-900/10 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-200">
                         <div class="flex items-center space-x-2 overflow-hidden min-w-0 max-w-full">
                             <div class="w-1 h-8 bg-purple-500 rounded-full flex-shrink-0"></div>
-                            <div class="flex flex-col overflow-hidden max-w-full min-w-0 bg-red-500">
-                                <span class="text-[10px] font-bold text-purple-400">Replying to {{ replyingTo.user
+                            <div class="flex flex-col overflow-hidden flex-1 min-w-0">
+                                <span class="text-[10px] font-bold text-purple-400 truncate">Replying to {{ replyingTo.user
                                     }}</span>
-                                <span class="text-xs text-gray-400 truncate">{{ replyingTo.message || (replyingTo.isFile
+                                <span class="text-xs text-gray-400 truncate block">{{ replyingTo.message || (replyingTo.isFile
                                     ? 'File: ' + replyingTo.fileName : '') }}</span>
                             </div>
                         </div>
