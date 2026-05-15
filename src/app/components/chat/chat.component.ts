@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChatService, ChatMessage, Chatroom, RoomMessage } from '../../services/chat.service';
+import { StudyRoomService, StudyRoom, StudyRoomMessage, StudyRoomInvite } from '../../services/study-room.service';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -26,6 +27,13 @@ export class ChatComponent implements OnInit, OnDestroy {
   roomMessages: RoomMessage[] = [];
   unreadRooms: Set<string> = new Set<string>();
 
+  // Study Rooms
+  studyRooms: StudyRoom[] = [];
+  studyRoomMessages: StudyRoomMessage[] = [];
+  unreadStudyRooms: Set<string> = new Set<string>();
+  pendingInvites: StudyRoomInvite[] = [];
+  pinguTypingMap: Map<string, boolean> = new Map();
+
   showCreateRoomModal = false;
   newRoomName = '';
   showRenameRoomModal = false;
@@ -36,23 +44,42 @@ export class ChatComponent implements OnInit, OnDestroy {
   selectedUserToInvite = '';
   showRoomMenu = false;
 
+  // Study Room specific
+  showCreateStudyRoomModal = false;
+  selectedStudyMembers: Set<string> = new Set();
+
   replyingTo: ChatMessage | null = null;
   selectedFiles: { file: File, preview: string, type: string }[] = [];
 
   private subs = new Subscription();
+  private timerInterval: any;
 
-  constructor(private chatService: ChatService, private router: Router) {
+  constructor(
+    private chatService: ChatService, 
+    private studyRoomService: StudyRoomService,
+    private router: Router
+  ) {
     this.currentUser = this.chatService.currentUser;
   }
 
-  get filteredMessages(): (ChatMessage | RoomMessage)[] {
+  get filteredMessages(): (ChatMessage | RoomMessage | StudyRoomMessage)[] {
     if (this.activeChat === 'global') {
       return this.messages.filter(m => !m.isPrivate);
     }
+    
+    // Study Room
+    const studyRoom = this.studyRooms.find(r => r.id === this.activeChat);
+    if (studyRoom) {
+      return this.studyRoomMessages.filter(m => m.roomId === this.activeChat);
+    }
+
+    // Chatroom
     const room = this.chatrooms.find(r => r.id === this.activeChat);
     if (room) {
       return this.roomMessages.filter(m => m.roomId === this.activeChat);
     }
+    
+    // DM
     return this.messages.filter(m => 
       m.isPrivate && 
       (m.user === this.activeChat || (m.user === this.currentUser && m.toUser === this.activeChat))
@@ -88,6 +115,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   setActiveChat(chatId: string) {
     this.activeChat = chatId;
     this.unreadRooms.delete(chatId);
+    this.unreadStudyRooms.delete(chatId);
     this.showRoomMenu = false;
   }
 
@@ -163,8 +191,63 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.showInviteModal = false;
   }
 
-  async kickUser(room: Chatroom, username: string) {
-    await this.chatService.kickFromRoom(room.id, username);
+  async kickUser(room: Chatroom | StudyRoom, username: string) {
+    if ('id' in room && !('expiresAt' in room)) {
+      await this.chatService.kickFromRoom((room as Chatroom).id, username);
+    }
+  }
+
+  // Study Rooms
+  openCreateStudyRoom() {
+    this.selectedStudyMembers.clear();
+    this.showCreateStudyRoomModal = true;
+  }
+
+  toggleStudyMember(username: string) {
+    if (this.selectedStudyMembers.has(username)) {
+      this.selectedStudyMembers.delete(username);
+    } else {
+      this.selectedStudyMembers.add(username);
+    }
+  }
+
+  async createStudyRoom() {
+    if (this.selectedStudyMembers.size === 0) return;
+    const members = Array.from(this.selectedStudyMembers);
+    await this.studyRoomService.createStudyRoom(members);
+    this.showCreateStudyRoomModal = false;
+  }
+
+  async respondToInvite(inviteId: string, accept: boolean) {
+    await this.studyRoomService.respondToInvite(inviteId, accept);
+  }
+
+  get activeStudyRoom(): StudyRoom | undefined {
+    return this.studyRooms.find(r => r.id === this.activeChat);
+  }
+
+  getRemainingTime(room: StudyRoom): string {
+    const expires = new Date(room.expiresAt).getTime();
+    const now = Date.now();
+    const diff = expires - now;
+
+    if (diff <= 0) return '00:00:00';
+
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+
+  isExpiringSoon(room: StudyRoom): boolean {
+    const expires = new Date(room.expiresAt).getTime();
+    const now = Date.now();
+    return (expires - now) < 600000; // 10 minutes
+  }
+
+  isPinguTyping(roomId: string): boolean {
+    return this.pinguTypingMap.get(roomId) || false;
   }
 
   ngOnInit() {
@@ -238,6 +321,52 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.chatService.onlineUsers$.subscribe(users => this.onlineUsers = users)
     );
 
+    // Study Rooms Subscriptions
+    this.subs.add(
+      this.studyRoomService.studyRooms$.subscribe(rooms => {
+        this.studyRooms = rooms;
+        if (this.activeChat !== 'global' && !this.openDMs.includes(this.activeChat) && 
+            !this.chatrooms.find(r => r.id === this.activeChat) &&
+            !rooms.find(r => r.id === this.activeChat)) {
+          this.activeChat = 'global';
+        }
+      })
+    );
+
+    let previousStudyMsgCount = 0;
+    this.subs.add(
+      this.studyRoomService.studyRoomMessages$.subscribe(msgs => {
+        const newMsgs = msgs.slice(previousStudyMsgCount);
+        previousStudyMsgCount = msgs.length;
+        this.studyRoomMessages = msgs;
+
+        newMsgs.forEach(m => {
+          if (m.roomId !== this.activeChat && m.user !== this.currentUser) {
+            this.unreadStudyRooms.add(m.roomId);
+          }
+        });
+
+        setTimeout(() => {
+          const scrollable = document.querySelector('.custom-scrollbar');
+          if (scrollable) {
+            scrollable.scrollTop = scrollable.scrollHeight;
+          }
+        }, 100);
+      })
+    );
+
+    this.subs.add(
+      this.studyRoomService.pendingInvites$.subscribe(invites => this.pendingInvites = invites)
+    );
+
+    this.subs.add(
+      this.studyRoomService.pinguTyping$.subscribe(map => this.pinguTypingMap = map)
+    );
+
+    this.timerInterval = setInterval(() => {
+      // Force UI update for countdown timers
+    }, 1000);
+
     this.subs.add(
       this.chatService.userLeft$.subscribe(user => {
         if (!user) return;
@@ -252,6 +381,7 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subs.unsubscribe();
+    if (this.timerInterval) clearInterval(this.timerInterval);
   }
 
   async sendMessage(event?: Event) {
@@ -287,6 +417,8 @@ export class ChatComponent implements OnInit, OnDestroy {
         await this.chatService.sendMessage(msg, reply);
       } else if (this.activeRoom) {
         await this.chatService.sendRoomMessage(this.activeRoom.id, msg, reply);
+      } else if (this.activeStudyRoom) {
+        await this.studyRoomService.sendMessage(this.activeStudyRoom.id, msg);
       } else {
         await this.chatService.sendPrivateMessage(this.activeChat, msg);
       }
