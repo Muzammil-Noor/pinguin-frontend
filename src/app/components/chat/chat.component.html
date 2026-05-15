@@ -336,8 +336,8 @@
                                         'bg-gradient-to-br from-[#1a1a2e] to-[#16213e] border border-[#4075f9]/50 text-white rounded-bl-sm shadow-[0_0_15px_rgba(64,117,249,0.2)] pingu-message': msg.user === 'Pingu'
                                     }">
                                     <p *ngIf="msg.user === 'Pingu'" class="text-[10px] font-black text-[#4075f9] uppercase tracking-widest mb-1">Pingu Response</p>
-                                    <div *ngIf="msg.user === 'Pingu' && (msg as any).prompt" class="mb-2 p-2 bg-black/30 rounded-lg border-l-2 border-[#4075f9] text-xs text-gray-400 italic">
-                                        "{{ (msg as any).prompt }}"
+                                    <div *ngIf="msg.user === 'Pingu' && $any(msg).prompt" class="mb-2 p-2 bg-black/30 rounded-lg border-l-2 border-[#4075f9] text-xs text-gray-400 italic">
+                                        "{{ $any(msg).prompt }}"
                                     </div>
                                     <p [innerHTML]="msg.message"></p>
                                 </div>
