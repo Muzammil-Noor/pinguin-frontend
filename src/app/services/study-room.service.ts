@@ -39,4 +39,25 @@ export class StudyRoomService {
   private setupListeners() {
     const hub = this.chatService['hubConnection'];
 
+    hub.on('StudyRoomInviteReceived', (invite: StudyRoomInvite) => {
+      const current = this.pendingInvites$.value;
+      this.pendingInvites$.next([...current, invite]);
+    });
+
+    hub.on('StudyRoomInviteAccepted', (inviteId: string, username: string) => {
+      // Could show a notification: "X accepted the invite"
+    });
+
+    hub.on('StudyRoomInviteDeclined', (inviteId: string, username: string) => {
+      this.pendingInvites$.next(this.pendingInvites$.value.filter(i => i.inviteId !== inviteId));
+    });
+
+    hub.on('StudyRoomInviteCancelled', (inviteId: string, reason: string) => {
+      this.pendingInvites$.next(this.pendingInvites$.value.filter(i => i.inviteId !== inviteId));
+    });
+
+    hub.on('StudyRoomInviteExpired', (inviteId: string) => {
+      this.pendingInvites$.next(this.pendingInvites$.value.filter(i => i.inviteId !== inviteId));
+    });
+
 }
