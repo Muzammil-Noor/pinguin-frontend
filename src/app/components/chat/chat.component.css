@@ -104,3 +104,43 @@ textarea::placeholder {
 textarea:focus::placeholder {
     opacity: 0.5;
 }
+
+/* Pingu Animations */
+@keyframes pingu-glow {
+    0%, 100% { box-shadow: 0 0 15px rgba(64, 117, 249, 0.2); }
+    50% { box-shadow: 0 0 25px rgba(64, 117, 249, 0.4); }
+}
+
+.pingu-message {
+    animation: pingu-glow 3s infinite ease-in-out;
+}
+
+/* Animations for overlays */
+.animate-in {
+    animation-duration: 0.3s;
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    animation-fill-mode: forwards;
+}
+
+.slide-in-from-right-10 {
+    animation-name: slide-in-right;
+}
+
+@keyframes slide-in-right {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in-from-bottom-2 {
+    animation-name: slide-in-bottom;
+}
+
+@keyframes slide-in-bottom {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Custom styles for study room elements */
+.font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}

@@ -119,6 +119,42 @@
                                             class="text-[10px] ml-1 opacity-70">🔑</span>
                                     </div>
                                 </div>
+                        </ul>
+                        
+                        <!-- Study Rooms -->
+                        <div class="flex justify-between items-center mb-2 px-2 mt-6">
+                            <h3 class="hidden md:block text-gray-400 text-xs font-bold uppercase tracking-wider select-none">
+                                Study Rooms
+                            </h3>
+                            <button (click)="openCreateStudyRoom()"
+                                class="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded p-0.5"
+                                title="Create Study Room">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <ul class="space-y-1 mb-4">
+                            <li *ngFor="let room of studyRooms">
+                                <div (click)="setActiveChat(room.id)"
+                                    class="flex items-center space-x-0 md:space-x-3 p-2 justify-center md:justify-start rounded-lg cursor-pointer transition-all"
+                                    [ngClass]="activeChat === room.id ? 'bg-gray-800/80 border border-gray-700/50 shadow-inner' : 'hover:bg-gray-800/50 border border-transparent'">
+                                    <div class="relative">
+                                        <div class="w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center border shadow-sm"
+                                            [ngClass]="unreadStudyRooms.has(room.id) ? 'bg-[#bb2c45]/20 border-[#bb2c45]' : (activeChat === room.id ? 'bg-gradient-to-br from-[#4075f9] to-[#00d2ff] border-gray-600' : 'bg-gray-800 border-gray-600')">
+                                            <span class="font-bold text-sm"
+                                                [ngClass]="unreadStudyRooms.has(room.id) ? 'text-[#bb2c45]' : (activeChat === room.id ? 'text-white' : 'text-gray-400')">S</span>
+                                        </div>
+                                    </div>
+                                    <div class="hidden md:flex flex-1 min-w-0 flex-col">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm font-bold truncate block"
+                                                [ngClass]="unreadStudyRooms.has(room.id) ? 'text-[#bb2c45] drop-shadow-[0_0_8px_rgba(187,44,69,0.5)]' : (activeChat === room.id ? 'text-white' : 'text-gray-300')">Study Room</span>
+                                            <span class="text-[10px] font-mono" [ngClass]="isExpiringSoon(room) ? 'text-red-400 animate-pulse' : 'text-gray-500'">{{ getRemainingTime(room) }}</span>
+                                        </div>
+                                        <span class="text-[10px] text-gray-500 truncate">{{ room.members.length }} members</span>
+                                    </div>
+                                </div>
                             </li>
                         </ul>
 
@@ -178,11 +214,21 @@
                         </div>
                         <div>
                             <h2 class="text-white font-bold text-sm md:text-base">{{ activeRoom ? activeRoom.name :
-                                (activeChat === 'global' ? 'Global Chat' : activeChat) }}</h2>
+                                (activeStudyRoom ? 'Study Room' : (activeChat === 'global' ? 'Global Chat' : activeChat)) }}</h2>
                             <p class="text-xs text-green-400 font-medium opacity-80" *ngIf="activeChat !== 'global'">
-                                {{ activeRoom ? activeRoom.members.length + ' members | E2E Encrypted' : 'E2E Encrypted'
+                                {{ activeRoom ? activeRoom.members.length + ' members | E2E Encrypted' : 
+                                   (activeStudyRoom ? activeStudyRoom.members.length + ' members | AI Assistant' : 'E2E Encrypted')
                                 }}
                             </p>
+                        </div>
+                    </div>
+
+                    <div *ngIf="activeStudyRoom" class="flex items-center space-x-3">
+                        <div class="px-3 py-1 bg-black/40 rounded-full border border-gray-700/50 flex items-center space-x-2">
+                            <span class="text-[10px] uppercase font-black text-gray-500 tracking-widest">Time Remaining</span>
+                            <span class="text-sm font-mono font-bold" [ngClass]="isExpiringSoon(activeStudyRoom) ? 'text-red-400 animate-pulse' : 'text-white'">
+                                {{ getRemainingTime(activeStudyRoom) }}
+                            </span>
                         </div>
                     </div>
 
@@ -225,13 +271,14 @@
                                 activeChat.charAt(0).toUpperCase() }}</span>
                         </div>
                         <h1 class="text-xl md:text-2xl font-bold mt-4 text-white">
-                            {{ activeRoom ? 'Welcome to ' + activeRoom.name + '!' : (activeChat === 'global' ? 'Welcome
-                            to Global!' : 'Direct message with ' + activeChat) }}
+                            {{ activeRoom ? 'Welcome to ' + activeRoom.name + '!' : 
+                               (activeStudyRoom ? 'Welcome to Study Room!' : 
+                               (activeChat === 'global' ? 'Welcome to Global!' : 'Direct message with ' + activeChat)) }}
                         </h1>
                         <p class="text-gray-500 text-xs md:text-sm mt-2 max-w-sm mx-auto">
-                            {{ activeRoom ? 'End-to-end encrypted room. Messages visible only to members.' : (activeChat
-                            === 'global' ? 'Ephemeral public channel. Messages disappear upon disconnect.' : 'End-to-end
-                            encrypted direct connection.') }}
+                            {{ activeRoom ? 'End-to-end encrypted room. Messages visible only to members.' : 
+                               (activeStudyRoom ? 'Collaborative study space with Pingu AI assistant. Messages are NOT encrypted.' : 
+                               (activeChat === 'global' ? 'Ephemeral public channel. Messages disappear upon disconnect.' : 'End-to-end encrypted direct connection.')) }}
                         </p>
                     </div>
 
@@ -255,9 +302,11 @@
                             <!-- Avatar (only for others) -->
                             <div *ngIf="msg.user !== currentUser" class="flex-shrink-0 mb-1 opacity-90 mr-2">
                                 <div
-                                    class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center border border-gray-700">
-                                    <span class="text-gray-400 text-[10px] md:text-xs font-bold">{{
+                                    class="w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center border border-gray-700 overflow-hidden"
+                                    [ngClass]="msg.user === 'Pingu' ? 'bg-gradient-to-br from-[#4075f9] to-[#00d2ff] border-[#4075f9]' : 'bg-gradient-to-br from-gray-800 to-gray-900'">
+                                    <span *ngIf="msg.user !== 'Pingu'" class="text-gray-400 text-[10px] md:text-xs font-bold">{{
                                         msg.user.charAt(0).toUpperCase() }}</span>
+                                    <span *ngIf="msg.user === 'Pingu'" class="text-white text-lg">🐧</span>
                                 </div>
                             </div>
 
@@ -279,13 +328,17 @@
                                         'File: ' + msg.replyTo.fileName : '') }}</div>
                                 </div>
 
-                                <!-- Standard Text -->
                                 <div *ngIf="!msg.isFile"
                                     class="px-4 py-2 md:px-5 md:py-3 rounded-2xl text-sm leading-relaxed shadow-md transition-all group-hover:scale-[1.01] break-words min-w-0 max-w-full"
                                     [ngClass]="{
                                         'bg-gradient-to-br from-[#c51ce9] to-[#4075f9] text-white rounded-br-sm': msg.user === currentUser,
-                                        'bg-gray-800/90 border border-gray-700/50 text-gray-100 rounded-bl-sm backdrop-blur-sm': msg.user !== currentUser
+                                        'bg-gray-800/90 border border-gray-700/50 text-gray-100 rounded-bl-sm backdrop-blur-sm': msg.user !== currentUser && msg.user !== 'Pingu',
+                                        'bg-gradient-to-br from-[#1a1a2e] to-[#16213e] border border-[#4075f9]/50 text-white rounded-bl-sm shadow-[0_0_15px_rgba(64,117,249,0.2)] pingu-message': msg.user === 'Pingu'
                                     }">
+                                    <p *ngIf="msg.user === 'Pingu'" class="text-[10px] font-black text-[#4075f9] uppercase tracking-widest mb-1">Pingu Response</p>
+                                    <div *ngIf="msg.user === 'Pingu' && (msg as any).prompt" class="mb-2 p-2 bg-black/30 rounded-lg border-l-2 border-[#4075f9] text-xs text-gray-400 italic">
+                                        "{{ (msg as any).prompt }}"
+                                    </div>
                                     <p [innerHTML]="msg.message"></p>
                                 </div>
 
@@ -412,7 +465,9 @@
 
                         <textarea [(ngModel)]="newMessage" (keydown.enter)="sendMessage($event)"
                             class="w-full bg-gray-900/50 text-white placeholder-gray-500 border-none py-4 md:py-5 pl-10 md:pl-12 pr-12 md:pr-14 focus:outline-none transition-all resize-none min-h-[56px] max-h-48 text-sm"
-                            [placeholder]="selectedFiles.length > 0 ? 'Add a caption...' : (activeChat === 'global' ? 'Message global chat...' : 'Message ' + activeChat + '...')"
+                            [placeholder]="selectedFiles.length > 0 ? 'Add a caption...' : 
+                                           (activeChat === 'global' ? 'Message global chat...' : 
+                                           (activeStudyRoom ? 'Type @Pingu to ask a question...' : 'Message ' + activeChat + '...'))"
                             rows="1"></textarea>
 
                         <button (click)="sendMessage()" [disabled]="!newMessage.trim() && selectedFiles.length === 0"
@@ -543,12 +598,80 @@
             <h4 class="text-xs font-bold text-gray-400 mb-2 uppercase">Current Members</h4>
             <ul class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
                 <li *ngFor="let member of roomToInvite?.members" class="flex justify-between items-center text-sm">
-                    <span class="text-gray-300">{{ member }} <span *ngIf="member === roomToInvite?.owner"
+                                <span class="text-gray-300">{{ member }} <span *ngIf="member === roomToInvite?.owner"
                             class="text-[10px]">🔑</span></span>
                     <button *ngIf="member !== currentUser" (click)="kickUser(roomToInvite!, member)"
                         class="text-red-400 hover:text-red-300 text-xs font-bold">Kick</button>
                 </li>
             </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Create Study Room Modal -->
+<div *ngIf="showCreateStudyRoomModal"
+    class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 border border-[#4075f9]/30 rounded-2xl w-full max-w-md overflow-hidden shadow-[0_0_50px_rgba(64,117,249,0.15)]">
+        <div class="px-6 py-5 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-[#1a1a2e]">
+            <h3 class="text-xl font-black text-white flex items-center">
+                <span class="mr-2">🐧</span> Create Study Room
+            </h3>
+            <p class="text-xs text-gray-500 mt-1">Select members to invite. Study rooms last for 3 hours.</p>
+        </div>
+        <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            <h4 class="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">Online Users</h4>
+            <div class="grid grid-cols-1 gap-2">
+                <div *ngFor="let user of onlineUsers" 
+                    (click)="user !== currentUser ? toggleStudyMember(user) : null"
+                    [ngClass]="{'opacity-50 cursor-not-allowed': user === currentUser, 'hover:bg-gray-800 cursor-pointer': user !== currentUser, 'bg-[#4075f9]/10 border-[#4075f9]/50': selectedStudyMembers.has(user)}"
+                    class="flex items-center justify-between p-3 rounded-xl border border-gray-800 transition-all">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center font-bold text-xs text-gray-400">
+                            {{ user.charAt(0).toUpperCase() }}
+                        </div>
+                        <span class="text-sm font-bold" [ngClass]="selectedStudyMembers.has(user) ? 'text-white' : 'text-gray-300'">{{ user }}</span>
+                    </div>
+                    <div *ngIf="user !== currentUser" class="w-5 h-5 rounded-md border flex items-center justify-center"
+                        [ngClass]="selectedStudyMembers.has(user) ? 'bg-[#4075f9] border-[#4075f9]' : 'border-gray-700'">
+                        <svg *ngIf="selectedStudyMembers.has(user)" class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div *ngIf="onlineUsers.length <= 1" class="text-center py-8">
+                    <p class="text-gray-500 text-sm">No other users online to invite.</p>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-800/30 flex justify-end space-x-3">
+            <button (click)="showCreateStudyRoomModal = false"
+                class="px-5 py-2.5 text-sm font-bold text-gray-400 hover:text-white transition-colors">Cancel</button>
+            <button (click)="createStudyRoom()" [disabled]="selectedStudyMembers.size === 0"
+                class="px-6 py-2.5 text-sm font-black bg-[#4075f9] hover:bg-[#5c8aff] text-white rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#4075f9]/20">
+                Send Invites
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Invites Overlay -->
+<div *ngIf="pendingInvites.length > 0" class="fixed bottom-6 right-6 z-[100] flex flex-col space-y-3">
+    <div *ngFor="let invite of pendingInvites" 
+        class="bg-gray-900 border border-[#4075f9]/50 rounded-2xl p-5 shadow-[0_10px_40px_rgba(0,0,0,0.5)] w-80 animate-in slide-in-from-right-10">
+        <div class="flex items-start space-x-4">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4075f9] to-[#00d2ff] flex items-center justify-center text-2xl flex-shrink-0">🐧</div>
+            <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-black text-white">Study Room Invite</h4>
+                <p class="text-xs text-gray-400 mt-1">
+                    <span class="text-[#4075f9] font-bold">{{ invite.inviter }}</span> invited you to a study session.
+                </p>
+                <div class="mt-3 flex space-x-2">
+                    <button (click)="respondToInvite(invite.inviteId, true)" 
+                        class="flex-1 py-2 bg-[#4075f9] hover:bg-[#5c8aff] text-white text-xs font-black rounded-lg transition-all">Accept</button>
+                    <button (click)="respondToInvite(invite.inviteId, false)" 
+                        class="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg transition-all">Decline</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
