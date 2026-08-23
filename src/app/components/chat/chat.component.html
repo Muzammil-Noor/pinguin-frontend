@@ -50,6 +50,7 @@
                             <li *ngFor="let user of onlineUsers" class="group">
                                 <div class="flex items-center space-x-0 md:space-x-3 p-2 justify-center md:justify-start rounded-lg transition-all duration-200 cursor-pointer"
                                     [ngClass]="activeChat === user ? 'bg-gray-800/80 border border-gray-700/50 shadow-inner' : 'hover:bg-gray-800/50 border border-transparent'"
+                                    [class.opacity-50]="isBlocked(user)"
                                     (click)="openDM(user)">
                                     <div class="relative">
                                         <div class="w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center border shadow-sm transition-all"
@@ -76,9 +77,51 @@
                                         <span *ngIf="hasUnread(user)"
                                             class="ml-2 w-2 h-2 rounded-full bg-[#bb2c45] animate-pulse"></span>
                                     </span>
+
+                                    <!-- Block toggle. Hidden until hover so the row stays clean,
+                                         but pinned visible while the user is blocked. -->
+                                    <button *ngIf="user !== currentUser" (click)="toggleBlock(user, $event)"
+                                        class="hidden md:flex ml-auto flex-shrink-0 p-1 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                        [class.opacity-100]="isBlocked(user)"
+                                        [ngClass]="isBlocked(user) ? 'text-[#dd3064] hover:text-red-300' : 'text-gray-500 hover:text-[#dd3064]'"
+                                        [title]="isBlocked(user) ? 'Unblock ' + user : 'Block ' + user">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636"></path>
+                                        </svg>
+                                    </button>
                                 </div>
                             </li>
                         </ul>
+
+                        <!-- Block management -->
+                        <div *ngIf="blockedUsersList.length > 0"
+                            class="hidden md:block mt-6 pt-4 border-t border-gray-800/60">
+                            <button (click)="showBlockManager = !showBlockManager"
+                                class="w-full flex items-center justify-between px-2 text-gray-400 text-xs font-bold uppercase tracking-wider hover:text-gray-200 transition-colors">
+                                <span>Blocked</span>
+                                <span class="flex items-center gap-2">
+                                    <span class="bg-[#dd3064]/20 text-[#dd3064] py-0.5 px-2 rounded-full">{{
+                                        blockedUsersList.length }}</span>
+                                    <svg class="w-3 h-3 transition-transform" [class.rotate-180]="showBlockManager"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </span>
+                            </button>
+
+                            <ul *ngIf="showBlockManager" class="mt-2 space-y-1">
+                                <li *ngFor="let blocked of blockedUsersList"
+                                    class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-800/50">
+                                    <span class="text-sm text-gray-400 truncate">{{ blocked }}</span>
+                                    <button (click)="toggleBlock(blocked, $event)"
+                                        class="text-[10px] font-bold text-gray-500 hover:text-white uppercase tracking-wide flex-shrink-0 ml-2">
+                                        Unblock
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
 
                     <!-- Rooms Tab -->
@@ -215,9 +258,11 @@
                         <div>
                             <h2 class="text-white font-bold text-sm md:text-base">{{ activeRoom ? activeRoom.name :
                                 (activeStudyRoom ? 'Study Room' : (activeChat === 'global' ? 'Global Chat' : activeChat)) }}</h2>
-                            <p class="text-xs text-green-400 font-medium opacity-80" *ngIf="activeChat !== 'global'">
-                                {{ activeRoom ? activeRoom.members.length + ' members | E2E Encrypted' : 
-                                   (activeStudyRoom ? activeStudyRoom.members.length + ' members | AI Assistant' : 'E2E Encrypted')
+                            <p class="text-xs font-medium opacity-80" *ngIf="activeChat !== 'global'"
+                                [ngClass]="isActiveDmBlocked ? 'text-[#dd3064]' : 'text-green-400'">
+                                {{ isActiveDmBlocked ? 'Blocked | Read-only' :
+                                   (activeRoom ? activeRoom.members.length + ' members | E2E Encrypted' :
+                                   (activeStudyRoom ? activeStudyRoom.members.length + ' members | AI Assistant' : 'E2E Encrypted'))
                                 }}
                             </p>
                         </div>
@@ -230,6 +275,15 @@
                                 {{ getRemainingTime(activeStudyRoom) }}
                             </span>
                         </div>
+                    </div>
+
+                    <!-- DM block toggle -->
+                    <div *ngIf="activeChat !== 'global' && !activeRoom && !activeStudyRoom" class="flex items-center">
+                        <button (click)="toggleBlock(activeChat)"
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors"
+                            [ngClass]="isBlocked(activeChat) ? 'text-[#dd3064] border-[#dd3064]/50 bg-[#dd3064]/10 hover:bg-[#dd3064]/20' : 'text-gray-400 border-gray-700 hover:text-[#dd3064] hover:border-[#dd3064]/50'">
+                            {{ isBlocked(activeChat) ? 'Unblock' : 'Block' }}
+                        </button>
                     </div>
 
                     <div *ngIf="activeRoom" class="relative">
@@ -447,6 +501,32 @@
                         </div>
                     </div>
 
+                    <!-- Typing Indicator -->
+                    <div *ngIf="typingLabel"
+                        class="px-4 py-1.5 flex items-center space-x-2 text-[11px] text-gray-400 border-b border-purple-900/30">
+                        <span class="flex space-x-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#c51ce9] animate-bounce"
+                                style="animation-delay: 0ms"></span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#7d4bf1] animate-bounce"
+                                style="animation-delay: 150ms"></span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#4075f9] animate-bounce"
+                                style="animation-delay: 300ms"></span>
+                        </span>
+                        <span class="italic truncate">{{ typingLabel }}</span>
+                    </div>
+
+                    <!-- Blocked DM is read-only -->
+                    <div *ngIf="isActiveDmBlocked"
+                        class="px-4 py-3 flex items-center justify-between gap-3 bg-[#dd3064]/10 border-b border-[#dd3064]/30">
+                        <span class="text-xs text-[#dd3064] font-medium">
+                            You blocked {{ activeChat }}. This conversation is read-only.
+                        </span>
+                        <button (click)="toggleBlock(activeChat)"
+                            class="text-xs font-bold text-gray-300 hover:text-white underline underline-offset-2 flex-shrink-0">
+                            Unblock
+                        </button>
+                    </div>
+
                     <div class="w-full relative flex items-end">
                         <div
                             class="absolute left-2 md:left-3 bottom-0 mb-2 md:mb-3 text-gray-400 hover:text-white transition-colors flex items-center">
@@ -464,13 +544,16 @@
                         </div>
 
                         <textarea [(ngModel)]="newMessage" (keydown.enter)="sendMessage($event)"
-                            class="w-full bg-gray-900/50 text-white placeholder-gray-500 border-none py-4 md:py-5 pl-10 md:pl-12 pr-12 md:pr-14 focus:outline-none transition-all resize-none min-h-[56px] max-h-48 text-sm"
-                            [placeholder]="selectedFiles.length > 0 ? 'Add a caption...' : 
-                                           (activeChat === 'global' ? 'Message global chat...' : 
-                                           (activeStudyRoom ? 'Type @Pingu to ask a question...' : 'Message ' + activeChat + '...'))"
+                            (input)="onMessageInput()" [disabled]="isActiveDmBlocked"
+                            class="w-full bg-gray-900/50 text-white placeholder-gray-500 border-none py-4 md:py-5 pl-10 md:pl-12 pr-12 md:pr-14 focus:outline-none transition-all resize-none min-h-[56px] max-h-48 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            [placeholder]="isActiveDmBlocked ? 'Read-only. Unblock ' + activeChat + ' to reply.' :
+                                           (selectedFiles.length > 0 ? 'Add a caption...' :
+                                           (activeChat === 'global' ? 'Message global chat...' :
+                                           (activeStudyRoom ? 'Type @Pingu to ask a question...' : 'Message ' + activeChat + '...')))"
                             rows="1"></textarea>
 
-                        <button (click)="sendMessage()" [disabled]="!newMessage.trim() && selectedFiles.length === 0"
+                        <button (click)="sendMessage()"
+                            [disabled]="(!newMessage.trim() && selectedFiles.length === 0) || isActiveDmBlocked"
                             class="absolute right-1.5 md:right-2 bottom-0 mb-1.5 md:mb-2.5 p-2 md:p-2.5 bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white rounded-xl hover:from-[#d13df0] hover:to-[#5c8aff] focus:outline-none transition-all duration-200 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center">
                             <svg class="h-4 w-4 md:h-5 md:w-5 transform rotate-90" fill="currentColor"
                                 viewBox="0 0 20 20">

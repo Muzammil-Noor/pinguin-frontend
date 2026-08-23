@@ -51,6 +51,13 @@ export class ChatComponent implements OnInit, OnDestroy {
   replyingTo: ChatMessage | null = null;
   selectedFiles: { file: File, preview: string, type: string }[] = [];
 
+  // Blocking
+  blockedUsers: Set<string> = new Set<string>();
+  showBlockManager = false;
+
+  // scope -> usernames typing there
+  typingUsers: Map<string, Set<string>> = new Map();
+
   private subs = new Subscription();
   private timerInterval: any;
 
@@ -99,13 +106,69 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.activeTab = tab;
   }
 
+  // =========================
+  // BLOCKING
+  // =========================
+
+  isBlocked(username: string): boolean {
+    return this.blockedUsers.has(username);
+  }
+
+  /** True when the open conversation is a DM with someone this user blocked. */
+  get isActiveDmBlocked(): boolean {
+    if (this.activeChat === 'global' || this.activeRoom || this.activeStudyRoom) return false;
+    return this.isBlocked(this.activeChat);
+  }
+
+  get blockedUsersList(): string[] {
+    return Array.from(this.blockedUsers).sort();
+  }
+
+  async toggleBlock(username: string, event?: Event) {
+    // These buttons sit inside clickable rows -- don't open the DM as a side effect.
+    event?.stopPropagation();
+    if (username === this.currentUser) return;
+
+    if (this.isBlocked(username)) {
+      await this.chatService.unblockUser(username);
+    } else {
+      await this.chatService.blockUser(username);
+    }
+  }
+
+  // =========================
+  // TYPING INDICATORS
+  // =========================
+
+  onMessageInput() {
+    this.chatService.notifyTyping(this.activeChat);
+  }
+
+  get typingLabel(): string {
+    const typing = Array.from(this.typingUsers.get(this.activeChat) ?? [])
+      .filter(u => u !== this.currentUser);
+
+    if (typing.length === 0) return '';
+    if (typing.length === 1) return `${typing[0]} is typing`;
+    if (typing.length === 2) return `${typing[0]} and ${typing[1]} are typing`;
+    return `${typing[0]} and ${typing.length - 1} others are typing`;
+  }
+
   openDM(username: string) {
     if (username === this.currentUser) return;
     if (!this.openDMs.includes(username)) {
       this.openDMs.push(username);
     }
-    this.activeChat = username;
+    this.switchTo(username);
     this.unreadDMs.delete(username);
+  }
+
+  /** Moves to another conversation, retracting any typing signal left in the old one. */
+  private switchTo(chatId: string) {
+    if (this.activeChat !== chatId) {
+      this.chatService.stopTyping(this.activeChat);
+    }
+    this.activeChat = chatId;
   }
 
   hasUnread(user: string): boolean {
@@ -113,7 +176,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   setActiveChat(chatId: string) {
-    this.activeChat = chatId;
+    this.switchTo(chatId);
     this.unreadRooms.delete(chatId);
     this.unreadStudyRooms.delete(chatId);
     this.showRoomMenu = false;
@@ -321,6 +384,14 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.chatService.onlineUsers$.subscribe(users => this.onlineUsers = users)
     );
 
+    this.subs.add(
+      this.chatService.blockedUsers$.subscribe(blocked => this.blockedUsers = blocked)
+    );
+
+    this.subs.add(
+      this.chatService.typingUsers$.subscribe(typing => this.typingUsers = typing)
+    );
+
     // Study Rooms Subscriptions
     this.subs.add(
       this.studyRoomService.studyRooms$.subscribe(rooms => {
@@ -380,6 +451,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.chatService.stopTyping(this.activeChat);
     this.subs.unsubscribe();
     if (this.timerInterval) clearInterval(this.timerInterval);
   }
@@ -393,6 +465,9 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     const msg = this.newMessage;
     const reply = this.replyingTo || undefined;
+
+    // Retract the typing signal now rather than waiting for the idle timer.
+    this.chatService.stopTyping(this.activeChat);
 
     // Send files first
     if (this.selectedFiles.length > 0) {
