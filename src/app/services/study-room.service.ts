@@ -34,6 +34,13 @@ export class StudyRoomService {
 
   constructor(private chatService: ChatService) {
     this.setupListeners();
+
+    // A block hides that user's messages everywhere, study rooms included.
+    this.chatService.purgeUser$.subscribe(username => {
+      this.studyRoomMessages$.next(
+        this.studyRoomMessages$.value.filter(m => m.user !== username)
+      );
+    });
   }
 
   private setupListeners() {

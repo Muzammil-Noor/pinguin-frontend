@@ -1,6 +1,14 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
+
+// One StartTyping per this many ms while the user keeps typing, rather than one per keystroke.
+const TYPING_PING_INTERVAL = 3000;
+// Idle gap after the last keystroke before we tell the server we stopped.
+const TYPING_IDLE_TIMEOUT = 3000;
+// Receiver-side safety net: drop a typing bubble that was never followed by a StopTyping
+// (sender disconnected, message dropped). Must exceed TYPING_PING_INTERVAL.
+const TYPING_STALE_TIMEOUT = 7000;
 
 export interface ChatMessage {
   id: string;
@@ -42,7 +50,22 @@ export class ChatService {
   public roomMessages$ = new BehaviorSubject<RoomMessage[]>([]);
   public onlineUsers$ = new BehaviorSubject<string[]>([]);
   public userLeft$ = new BehaviorSubject<string | null>(null);
+
+  // Usernames the local user has blocked. Server-authoritative -- only ever set from
+  // UserBlocked/UserUnblocked, never optimistically.
+  public blockedUsers$ = new BehaviorSubject<Set<string>>(new Set<string>());
+
+  // scope -> usernames currently typing there. Scope is 'global', a room id, or a DM peer.
+  public typingUsers$ = new BehaviorSubject<Map<string, Set<string>>>(new Map());
+
+  // Fires when a user's messages must be wiped from every view (they were blocked).
+  public purgeUser$ = new Subject<string>();
+
   public currentUser: string = '';
+
+  private incomingTypingTimers = new Map<string, any>();
+  private outgoingTypingSentAt = new Map<string, number>();
+  private outgoingTypingTimers = new Map<string, any>();
 
   private privateKey: CryptoKey | null = null;
   private publicKeys = new Map<string, CryptoKey>();
@@ -140,6 +163,16 @@ export class ChatService {
 
       const currentUsers = this.onlineUsers$.value.filter(u => u !== user);
       this.onlineUsers$.next(currentUsers);
+
+      // The server frees the username instantly, so our block on it dies too -- whoever
+      // claims the name next is a different person.
+      if (this.blockedUsers$.value.has(user)) {
+        const remaining = new Set(this.blockedUsers$.value);
+        remaining.delete(user);
+        this.blockedUsers$.next(remaining);
+      }
+      this.clearTypingFor(user);
+
       this.userLeft$.next(user);
 
       // Don't even show "user left" system message if we want total ephemeral? 
@@ -153,6 +186,29 @@ export class ChatService {
         eventType: 'leave',
         timestamp: Date.now()
       }]);
+    });
+
+    this.hubConnection.on('UserBlocked', (username: string) => {
+      const next = new Set(this.blockedUsers$.value);
+      next.add(username);
+      this.blockedUsers$.next(next);
+
+      // The server stops delivering from here on, but anything already on screen has to go:
+      // a block hides their messages everywhere, not just from now on.
+      this.messages$.next(this.messages$.value.filter(m => m.user !== username));
+      this.roomMessages$.next(this.roomMessages$.value.filter(m => m.user !== username));
+      this.clearTypingFor(username);
+      this.purgeUser$.next(username);
+    });
+
+    this.hubConnection.on('UserUnblocked', (username: string) => {
+      const next = new Set(this.blockedUsers$.value);
+      next.delete(username);
+      this.blockedUsers$.next(next);
+    });
+
+    this.hubConnection.on('TypingIndicator', (scope: string, username: string, isTyping: boolean) => {
+      this.applyTyping(scope, username, isTyping);
     });
 
     this.hubConnection.on('UserPublicKey', async (username: string, pem: string) => {
@@ -411,6 +467,121 @@ export class ChatService {
     }]);
   }
 
+
+  // =========================
+  // BLOCKING
+  // =========================
+
+  public async blockUser(username: string): Promise<boolean> {
+    if (username === this.currentUser) return false;
+    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) return false;
+    return await this.hubConnection.invoke<boolean>('BlockUser', username);
+  }
+
+  public async unblockUser(username: string): Promise<boolean> {
+    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) return false;
+    return await this.hubConnection.invoke<boolean>('UnblockUser', username);
+  }
+
+  public isBlocked(username: string): boolean {
+    return this.blockedUsers$.value.has(username);
+  }
+
+  /** Re-syncs the block list from the server, e.g. after a reconnect. */
+  public async refreshBlockedUsers(): Promise<void> {
+    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) return;
+    const blocked = await this.hubConnection.invoke<string[]>('GetBlockedUsers');
+    this.blockedUsers$.next(new Set(blocked));
+  }
+
+  // =========================
+  // TYPING INDICATORS
+  // =========================
+
+  /**
+   * Call on every keystroke. Throttles to one StartTyping per interval and schedules the
+   * matching StopTyping once the user goes idle.
+   */
+  public notifyTyping(scope: string) {
+    if (!scope) return;
+    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) return;
+
+    const now = Date.now();
+    const lastSent = this.outgoingTypingSentAt.get(scope) ?? 0;
+
+    if (now - lastSent > TYPING_PING_INTERVAL) {
+      this.outgoingTypingSentAt.set(scope, now);
+      this.hubConnection.invoke('StartTyping', scope).catch(() => { });
+    }
+
+    clearTimeout(this.outgoingTypingTimers.get(scope));
+    this.outgoingTypingTimers.set(scope, setTimeout(() => this.stopTyping(scope), TYPING_IDLE_TIMEOUT));
+  }
+
+  /** Call on send, or when leaving a conversation, so the bubble clears immediately. */
+  public stopTyping(scope: string) {
+    if (!scope) return;
+
+    clearTimeout(this.outgoingTypingTimers.get(scope));
+    this.outgoingTypingTimers.delete(scope);
+
+    // Nothing to retract if we never announced.
+    if (!this.outgoingTypingSentAt.has(scope)) return;
+    this.outgoingTypingSentAt.delete(scope);
+
+    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) return;
+    this.hubConnection.invoke('StopTyping', scope).catch(() => { });
+  }
+
+  private applyTyping(scope: string, username: string, isTyping: boolean) {
+    if (username === this.currentUser) return;
+
+    const timerKey = `${scope}::${username}`;
+    clearTimeout(this.incomingTypingTimers.get(timerKey));
+    this.incomingTypingTimers.delete(timerKey);
+
+    const next = new Map(this.typingUsers$.value);
+    const inScope = new Set(next.get(scope) ?? []);
+
+    if (isTyping) {
+      inScope.add(username);
+      this.incomingTypingTimers.set(
+        timerKey,
+        setTimeout(() => this.applyTyping(scope, username, false), TYPING_STALE_TIMEOUT)
+      );
+    } else {
+      inScope.delete(username);
+    }
+
+    if (inScope.size === 0) next.delete(scope); else next.set(scope, inScope);
+    this.typingUsers$.next(next);
+  }
+
+  /** Drops every typing bubble for a user across all scopes. */
+  private clearTypingFor(username: string) {
+    let changed = false;
+    const next = new Map<string, Set<string>>();
+
+    this.typingUsers$.value.forEach((users, scope) => {
+      if (!users.has(username)) {
+        next.set(scope, users);
+        return;
+      }
+      changed = true;
+      const remaining = new Set(users);
+      remaining.delete(username);
+      if (remaining.size > 0) next.set(scope, remaining);
+    });
+
+    this.incomingTypingTimers.forEach((timer, key) => {
+      if (key.endsWith(`::${username}`)) {
+        clearTimeout(timer);
+        this.incomingTypingTimers.delete(key);
+      }
+    });
+
+    if (changed) this.typingUsers$.next(next);
+  }
 
   // =========================
   // CHATROOMS
