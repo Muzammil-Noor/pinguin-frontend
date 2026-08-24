@@ -1,0 +1,134 @@
+<div class="flex flex-col h-full min-h-0 bg-black/20">
+
+    <!-- Toolbar -->
+    <div
+        class="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 border-b border-purple-900 bg-black/40 backdrop-blur-md flex-wrap">
+
+        <!-- Tools -->
+        <div class="flex items-center gap-1 bg-gray-900/60 rounded-lg p-1 border border-gray-800">
+            <button (click)="setTool('brush')" title="Brush"
+                class="p-2 rounded-md transition-all"
+                [ngClass]="tool === 'brush' ? 'bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                    </path>
+                </svg>
+            </button>
+
+            <button (click)="setTool('line')" title="Line"
+                class="p-2 rounded-md transition-all"
+                [ngClass]="tool === 'line' ? 'bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-width="2" d="M5 19L19 5"></path>
+                </svg>
+            </button>
+
+            <button (click)="setTool('rect')" title="Rectangle"
+                class="p-2 rounded-md transition-all"
+                [ngClass]="tool === 'rect' ? 'bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <rect x="4" y="6" width="16" height="12" rx="1" stroke-width="2"></rect>
+                </svg>
+            </button>
+
+            <button (click)="setTool('ellipse')" title="Ellipse"
+                class="p-2 rounded-md transition-all"
+                [ngClass]="tool === 'ellipse' ? 'bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <ellipse cx="12" cy="12" rx="8" ry="6" stroke-width="2"></ellipse>
+                </svg>
+            </button>
+
+            <button (click)="setTool('fill')" title="Fill"
+                class="p-2 rounded-md transition-all"
+                [ngClass]="tool === 'fill' ? 'bg-gradient-to-r from-[#c51ce9] to-[#4075f9] text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 11l-8-8-8.5 8.5a1 1 0 000 1.4l6.6 6.6a1 1 0 001.4 0L19 11z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M5 6l4 4M20 15s1.5 2 1.5 3a1.5 1.5 0 01-3 0c0-1 1.5-3 1.5-3z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Colour -->
+        <div class="flex items-center gap-2">
+            <label class="relative cursor-pointer" title="Pick a colour">
+                <span class="block w-8 h-8 rounded-lg border-2 border-gray-700 shadow-inner"
+                    [style.background]="color"></span>
+                <input type="color" [(ngModel)]="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+            </label>
+
+            <div class="hidden sm:grid grid-cols-6 gap-1">
+                <button *ngFor="let swatch of swatches" (click)="color = swatch"
+                    class="w-4 h-4 rounded border transition-transform hover:scale-125"
+                    [style.background]="swatch"
+                    [ngClass]="color === swatch ? 'border-white' : 'border-gray-700'"
+                    [title]="swatch"></button>
+            </div>
+        </div>
+
+        <!-- Stroke width: drives brush strokes and shape outlines alike -->
+        <div class="flex items-center gap-2 min-w-0">
+            <input type="range" min="1" max="48" step="1" [(ngModel)]="strokeWidth"
+                class="w-20 md:w-28 accent-[#c51ce9] cursor-pointer" title="Stroke width">
+            <span class="text-[10px] font-mono text-gray-400 w-6 text-right">{{ strokeWidth }}</span>
+        </div>
+
+        <div class="flex-1"></div>
+
+        <!-- History and board actions -->
+        <div class="flex items-center gap-1">
+            <button (click)="undo()" [disabled]="!canUndo" title="Undo your last action"
+                class="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 10h10a5 5 0 010 10h-3m-7-10l4-4m-4 4l4 4"></path>
+                </svg>
+            </button>
+
+            <button (click)="redo()" title="Redo your last undo"
+                class="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 10H11a5 5 0 000 10h3m7-10l-4-4m4 4l-4 4"></path>
+                </svg>
+            </button>
+
+            <button (click)="exportPng()" title="Export as PNG"
+                class="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+            </button>
+
+            <button (click)="clear()" title="Clear the board for everyone"
+                class="p-2 rounded-md text-gray-400 hover:text-[#dd3064] hover:bg-gray-800 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="flex-1 min-h-0 flex items-center justify-center p-2 md:p-4 relative">
+        <div class="board-frame" [style.aspect-ratio]="boardWidth + ' / ' + boardHeight">
+            <canvas #baseCanvas [width]="boardWidth" [height]="boardHeight" class="board-layer"></canvas>
+
+            <canvas #liveCanvas [width]="boardWidth" [height]="boardHeight"
+                class="board-layer board-input"
+                [class.cursor-crosshair]="tool !== 'fill'"
+                [class.cursor-cell]="tool === 'fill'"></canvas>
+        </div>
+
+        <div *ngIf="notice"
+            class="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-black/80 border border-purple-900 text-xs text-gray-200 shadow-xl backdrop-blur-sm">
+            {{ notice }}
+        </div>
+    </div>
+</div>

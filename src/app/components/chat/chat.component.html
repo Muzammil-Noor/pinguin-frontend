@@ -286,7 +286,14 @@
                         </button>
                     </div>
 
-                    <div *ngIf="activeRoom" class="relative">
+                    <div *ngIf="activeRoom" class="flex items-center gap-1">
+                        <button (click)="toggleWhiteboard()"
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors"
+                            [ngClass]="showWhiteboard ? 'text-white border-transparent bg-gradient-to-r from-[#c51ce9] to-[#4075f9] shadow-lg' : 'text-gray-400 border-gray-700 hover:text-white hover:border-gray-500'">
+                            {{ showWhiteboard ? 'Chat' : 'Whiteboard' }}
+                        </button>
+
+                        <div class="relative">
                         <button (click)="showRoomMenu = !showRoomMenu" class="text-gray-400 hover:text-white p-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -309,11 +316,13 @@
                                 class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800">Leave
                                 Room</button>
                         </div>
+                        </div>
                     </div>
                 </header>
 
                 <!-- Messages -->
-                <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar scroll-smooth" #scrollMe
+                <div *ngIf="!showWhiteboard"
+                    class="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar scroll-smooth" #scrollMe
                     [scrollTop]="scrollMe.scrollHeight">
                     <div class="flex flex-col mb-8 mt-4 text-center">
                         <div *ngIf="activeChat !== 'global'"
@@ -449,8 +458,13 @@
                     </div>
                 </div>
 
+                <!-- Whiteboard -->
+                <div *ngIf="showWhiteboard && activeRoom" class="flex-1 min-h-0">
+                    <app-whiteboard [roomId]="activeRoom.id"></app-whiteboard>
+                </div>
+
                 <!-- Input Area -->
-                <div class="border-t border-purple-900 pb-safe bg-black/20 backdrop-blur-sm">
+                <div *ngIf="!showWhiteboard" class="border-t border-purple-900 pb-safe bg-black/20 backdrop-blur-sm">
                     <!-- Reply Preview -->
                     <div *ngIf="replyingTo"
                         class="px-4 py-2 border-b border-purple-900/50 bg-purple-900/10 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-200">
