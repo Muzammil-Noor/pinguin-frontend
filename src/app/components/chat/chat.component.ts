@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChatService, ChatMessage, Chatroom, RoomMessage } from '../../services/chat.service';
 import { StudyRoomService, StudyRoom, StudyRoomMessage, StudyRoomInvite } from '../../services/study-room.service';
+import { WhiteboardComponent } from '../whiteboard/whiteboard.component';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, WhiteboardComponent],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.css'
 })
@@ -57,6 +58,9 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   // scope -> usernames typing there
   typingUsers: Map<string, Set<string>> = new Map();
+
+  // Whiteboard replaces the message view within a chatroom rather than sitting beside it.
+  showWhiteboard = false;
 
   private subs = new Subscription();
   private timerInterval: any;
@@ -167,8 +171,16 @@ export class ChatComponent implements OnInit, OnDestroy {
   private switchTo(chatId: string) {
     if (this.activeChat !== chatId) {
       this.chatService.stopTyping(this.activeChat);
+      // Boards are per-room, so leaving a room drops back to its chat view.
+      this.showWhiteboard = false;
     }
     this.activeChat = chatId;
+  }
+
+  toggleWhiteboard() {
+    if (!this.activeRoom) return;
+    this.showWhiteboard = !this.showWhiteboard;
+    this.showRoomMenu = false;
   }
 
   hasUnread(user: string): boolean {
