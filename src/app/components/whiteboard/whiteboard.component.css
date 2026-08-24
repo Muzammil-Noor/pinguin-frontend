@@ -1,0 +1,46 @@
+/*
+ * The frame holds the board's aspect ratio while fitting whatever space is available.
+ * Both canvases have a fixed 1600x900 backing store and are stretched by CSS, so every
+ * client rasterises identically no matter how big their window is.
+ */
+.board-frame {
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: 100%;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 2px solid rgb(88 28 135 / 0.6);
+    box-shadow: 0 0 40px rgb(0 0 0 / 0.6);
+}
+
+.board-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.board-input {
+    /* Without this a drag on touch scrolls the page instead of drawing. */
+    touch-action: none;
+}
+
+/* Native colour swatch chrome varies by browser; the visible swatch is our own element. */
+input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    padding: 0;
+    background: transparent;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+}
