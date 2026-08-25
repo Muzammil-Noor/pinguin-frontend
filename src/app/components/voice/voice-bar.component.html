@@ -1,0 +1,67 @@
+<div
+    class="flex items-center gap-3 px-3 md:px-4 py-2 border-b border-purple-900 bg-black/50 backdrop-blur-md flex-wrap">
+
+    <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="relative flex w-2 h-2">
+            <span class="animate-ping absolute inline-flex w-full h-full rounded-full bg-green-400 opacity-60"></span>
+            <span class="relative inline-flex w-2 h-2 rounded-full bg-green-500"></span>
+        </span>
+        <span class="text-[10px] uppercase font-black tracking-widest text-gray-400">Voice</span>
+        <span class="text-[10px] font-mono text-gray-500">{{ occupancy }}</span>
+    </div>
+
+    <!-- Participants -->
+    <div class="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+        <!-- Self -->
+        <div class="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border transition-all"
+            [ngClass]="talking ? 'border-green-400 bg-green-400/10 shadow-[0_0_12px_rgba(74,222,128,0.35)]' : 'border-gray-700 bg-gray-900/60'">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-[#c51ce9] to-[#4075f9] flex items-center justify-center">
+                <span class="text-[10px] font-bold text-white">{{ currentUser.charAt(0).toUpperCase() }}</span>
+            </div>
+            <span class="text-xs font-bold truncate max-w-[8rem]"
+                [ngClass]="talking ? 'text-green-300' : 'text-gray-300'">You</span>
+        </div>
+
+        <div *ngFor="let participant of participants"
+            class="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border transition-all"
+            [ngClass]="participant.speaking ? 'border-green-400 bg-green-400/10 shadow-[0_0_12px_rgba(74,222,128,0.35)]' : 'border-gray-700 bg-gray-900/60'">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 border border-gray-600 flex items-center justify-center relative">
+                <span class="text-[10px] font-bold text-gray-300">{{ participant.username.charAt(0).toUpperCase() }}</span>
+                <span *ngIf="isConnecting(participant)"
+                    class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-black animate-pulse"
+                    title="Connecting"></span>
+                <span *ngIf="isFailed(participant)"
+                    class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-black"
+                    title="Connection failed"></span>
+            </div>
+            <span class="text-xs font-bold truncate max-w-[8rem]"
+                [ngClass]="participant.speaking ? 'text-green-300' : 'text-gray-300'">{{ participant.username }}</span>
+        </div>
+
+        <span *ngIf="participants.length === 0" class="text-xs text-gray-500 italic">
+            Waiting for others to join
+        </span>
+    </div>
+
+    <!-- Push to talk -->
+    <div class="flex items-center gap-2 flex-shrink-0">
+        <button (pointerdown)="press()" (pointerup)="release()" (pointerleave)="release()"
+            (pointercancel)="release()" (contextmenu)="$event.preventDefault()"
+            class="ptt-button px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wide border transition-all select-none"
+            [ngClass]="talking ? 'bg-green-500 border-green-400 text-black shadow-[0_0_20px_rgba(74,222,128,0.5)] scale-95' : 'bg-gray-900 border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white'">
+            {{ talking ? 'Transmitting' : 'Hold to talk' }}
+        </button>
+
+        <span class="hidden lg:inline text-[10px] text-gray-500">
+            or hold <kbd class="px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 font-mono text-gray-300">{{ pttKey }}</kbd>
+        </span>
+
+        <button (click)="leave()" title="Leave voice"
+            class="p-2 rounded-lg text-gray-400 hover:text-[#dd3064] hover:bg-gray-800 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M16 17l5-5m0 0l-5-5m5 5H9m0 9H5a2 2 0 01-2-2V7a2 2 0 012-2h4"></path>
+            </svg>
+        </button>
+    </div>
+</div>

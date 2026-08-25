@@ -287,6 +287,12 @@
                     </div>
 
                     <div *ngIf="activeRoom" class="flex items-center gap-1">
+                        <button (click)="toggleVoice()" [disabled]="voiceBusy"
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            [ngClass]="inVoiceHere ? 'text-black border-green-400 bg-green-500 shadow-lg' : 'text-gray-400 border-gray-700 hover:text-white hover:border-gray-500'">
+                            {{ inVoiceHere ? 'In Voice' : 'Voice' }}
+                        </button>
+
                         <button (click)="toggleWhiteboard()"
                             class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors"
                             [ngClass]="showWhiteboard ? 'text-white border-transparent bg-gradient-to-r from-[#c51ce9] to-[#4075f9] shadow-lg' : 'text-gray-400 border-gray-700 hover:text-white hover:border-gray-500'">
@@ -319,6 +325,13 @@
                         </div>
                     </div>
                 </header>
+
+                <app-voice-bar *ngIf="inVoiceHere"></app-voice-bar>
+
+                <div *ngIf="voiceNotice"
+                    class="px-4 py-2 text-xs font-medium text-[#dd3064] bg-[#dd3064]/10 border-b border-[#dd3064]/30">
+                    {{ voiceNotice }}
+                </div>
 
                 <!-- Messages -->
                 <div *ngIf="!showWhiteboard"

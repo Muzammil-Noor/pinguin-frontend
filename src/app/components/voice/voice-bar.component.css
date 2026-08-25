@@ -1,0 +1,7 @@
+/* Holding the button must not start a text selection or fire the mobile long-press menu. */
+.ptt-button {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}

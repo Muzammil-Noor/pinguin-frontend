@@ -4,13 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { ChatService, ChatMessage, Chatroom, RoomMessage } from '../../services/chat.service';
 import { StudyRoomService, StudyRoom, StudyRoomMessage, StudyRoomInvite } from '../../services/study-room.service';
 import { WhiteboardComponent } from '../whiteboard/whiteboard.component';
+import { VoiceBarComponent } from '../voice/voice-bar.component';
+import { VoiceService } from '../../services/voice.service';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule, WhiteboardComponent],
+  imports: [CommonModule, FormsModule, WhiteboardComponent, VoiceBarComponent],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.css'
 })
@@ -62,12 +64,18 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Whiteboard replaces the message view within a chatroom rather than sitting beside it.
   showWhiteboard = false;
 
+  voiceRoomId: string | null = null;
+  voiceBusy = false;
+  voiceNotice = '';
+
   private subs = new Subscription();
   private timerInterval: any;
+  private voiceNoticeTimer: any;
 
   constructor(
-    private chatService: ChatService, 
+    private chatService: ChatService,
     private studyRoomService: StudyRoomService,
+    private voiceService: VoiceService,
     private router: Router
   ) {
     this.currentUser = this.chatService.currentUser;
@@ -181,6 +189,51 @@ export class ChatComponent implements OnInit, OnDestroy {
     if (!this.activeRoom) return;
     this.showWhiteboard = !this.showWhiteboard;
     this.showRoomMenu = false;
+  }
+
+  // =========================
+  // VOICE
+  // =========================
+
+  get inVoiceHere(): boolean {
+    return !!this.activeRoom && this.voiceRoomId === this.activeRoom.id;
+  }
+
+  async toggleVoice() {
+    const room = this.activeRoom;
+    if (!room || this.voiceBusy) return;
+
+    this.voiceBusy = true;
+    try {
+      if (this.voiceRoomId === room.id) {
+        await this.voiceService.leave();
+        return;
+      }
+
+      // Voice follows one room at a time; joining elsewhere drops the previous channel.
+      if (this.voiceRoomId) await this.voiceService.leave();
+
+      const result = await this.voiceService.join(room.id);
+      if (!result.ok) this.flashVoice(this.describeVoiceFailure(result.reason, result.capacity));
+    } finally {
+      this.voiceBusy = false;
+    }
+  }
+
+  private describeVoiceFailure(reason: string, capacity?: number): string {
+    switch (reason) {
+      case 'micDenied': return 'Microphone access was denied';
+      case 'micUnavailable': return 'No microphone available';
+      case 'full': return `Voice channel is full (${capacity} max)`;
+      case 'notAMember': return 'You are not a member of this room';
+      default: return 'Could not join voice';
+    }
+  }
+
+  private flashVoice(message: string) {
+    this.voiceNotice = message;
+    clearTimeout(this.voiceNoticeTimer);
+    this.voiceNoticeTimer = setTimeout(() => (this.voiceNotice = ''), 3200);
   }
 
   hasUnread(user: string): boolean {
@@ -404,6 +457,14 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.chatService.typingUsers$.subscribe(typing => this.typingUsers = typing)
     );
 
+    this.subs.add(
+      this.voiceService.joinedRoom$.subscribe(roomId => (this.voiceRoomId = roomId))
+    );
+
+    this.subs.add(
+      this.voiceService.error$.subscribe(message => this.flashVoice(message))
+    );
+
     // Study Rooms Subscriptions
     this.subs.add(
       this.studyRoomService.studyRooms$.subscribe(rooms => {
@@ -463,6 +524,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    clearTimeout(this.voiceNoticeTimer);
     this.chatService.stopTyping(this.activeChat);
     this.subs.unsubscribe();
     if (this.timerInterval) clearInterval(this.timerInterval);
