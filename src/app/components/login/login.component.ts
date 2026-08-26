@@ -27,13 +27,23 @@ export class LoginComponent {
     this.isLoading = true;
     this.error = '';
 
-    const success = await this.chatService.startConnection(this.username);
+    const result = await this.chatService.startConnection(this.username);
 
-    if (success) {
+    if (result === 'ok') {
       this.router.navigate(['/chat']);
     } else {
-      this.error = 'Username is taken or connection failed.';
+      this.error = this.describe(result);
       this.isLoading = false;
+    }
+  }
+
+  private describe(reason: string): string {
+    switch (reason) {
+      case 'taken': return 'That username is taken.';
+      case 'rateLimited': return 'Too many attempts - wait a minute and try again.';
+      case 'challengeFailed': return 'Verification failed - please try again.';
+      case 'invalid': return 'Usernames must be 1-32 characters.';
+      default: return 'Could not connect to the server.';
     }
   }
 }

@@ -61,6 +61,9 @@ export class ChatService {
   // Fires when a user's messages must be wiped from every view (they were blocked).
   public purgeUser$ = new Subject<string>();
 
+  // Server-side send throttles (PRD 12): the message or file was dropped, not delivered.
+  public rateLimited$ = new Subject<{ scope: 'messages' | 'files'; retryInSeconds: number }>();
+
   public currentUser: string = '';
 
   private incomingTypingTimers = new Map<string, any>();
@@ -83,23 +86,54 @@ export class ChatService {
   // CONNECTION
   // =========================
 
-  public async startConnection(username: string): Promise<boolean> {
+  /** Resolves to 'ok' or a failure code: taken | rateLimited | challengeFailed | invalid | failed. */
+  public async startConnection(username: string): Promise<string> {
     try {
-      await this.hubConnection.start();
+      // A retry after a rejected username reuses the live connection; start() throws on
+      // anything but the Disconnected state.
+      if (this.hubConnection.state === signalR.HubConnectionState.Disconnected) {
+        await this.hubConnection.start();
+      }
       this.currentUser = username;
 
       const publicKeyPem = await this.generateRSAKeys();
 
-      const success = await this.hubConnection.invoke<boolean>('JoinChat', username);
-      if (!success) return false;
+      // Anti-bot join challenge: the server hands out a prefix, we burn CPU finding a
+      // suffix whose hash clears the difficulty. One challenge per attempt.
+      const challenge = await this.hubConnection.invoke<{ prefix: string; difficulty: number }>('GetJoinChallenge');
+      const solution = await this.solveChallenge(challenge.prefix, challenge.difficulty);
+
+      const result = await this.hubConnection.invoke<string>('JoinChat', username, solution);
+      if (result !== 'ok') return result;
 
       await this.hubConnection.invoke('RegisterPublicKey', username, publicKeyPem);
 
-      return true;
+      return 'ok';
     } catch (err) {
       console.error(err);
-      return false;
+      return 'failed';
     }
+  }
+
+  private async solveChallenge(prefix: string, difficulty: number): Promise<string> {
+    const encoder = new TextEncoder();
+
+    for (let counter = 0; ; counter++) {
+      const digest = new Uint8Array(
+        await crypto.subtle.digest('SHA-256', encoder.encode(prefix + counter))
+      );
+      if (this.leadingZeroBits(digest) >= difficulty) return String(counter);
+    }
+  }
+
+  private leadingZeroBits(bytes: Uint8Array): number {
+    let bits = 0;
+    for (const b of bytes) {
+      if (b === 0) { bits += 8; continue; }
+      for (let mask = 0x80; mask > 0 && (b & mask) === 0; mask >>= 1) bits++;
+      break;
+    }
+    return bits;
   }
 
   // =========================
@@ -209,6 +243,14 @@ export class ChatService {
 
     this.hubConnection.on('TypingIndicator', (scope: string, username: string, isTyping: boolean) => {
       this.applyTyping(scope, username, isTyping);
+    });
+
+    // The whiteboard service registers its own handler for its scope; SignalR fans the
+    // event out to every registered handler.
+    this.hubConnection.on('RateLimitExceeded', (scope: string, retryInSeconds: number) => {
+      if (scope === 'messages' || scope === 'files') {
+        this.rateLimited$.next({ scope, retryInSeconds });
+      }
     });
 
     this.hubConnection.on('UserPublicKey', async (username: string, pem: string) => {

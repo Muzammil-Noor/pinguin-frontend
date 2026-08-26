@@ -465,6 +465,13 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.voiceService.error$.subscribe(message => this.flashVoice(message))
     );
 
+    this.subs.add(
+      this.chatService.rateLimited$.subscribe(({ scope, retryInSeconds }) => {
+        const what = scope === 'messages' ? 'Message' : 'File';
+        this.flashVoice(`${what} not sent - slow down. Try again in ${retryInSeconds}s.`);
+      })
+    );
+
     // Study Rooms Subscriptions
     this.subs.add(
       this.studyRoomService.studyRooms$.subscribe(rooms => {
